@@ -122,6 +122,7 @@ var ConfigModal = {
                 <i data-lucide="refresh-cw" class="w-4 h-4 text-[#1a7bb5]"></i>
                 Sincronizar
               </h3>
+              <p v-if="lastSyncTime" class="text-[10px] text-[#8a8a9e] mb-2">Última sincronização: {{ lastSyncTime }}</p>
               <button @click="handleSync"
                 :disabled="syncLoading"
                 class="btn-primary w-full py-2.5 text-sm font-semibold flex items-center justify-center gap-2"
@@ -195,6 +196,14 @@ var ConfigModal = {
         return user?.email || 'Utilizador'
       }
       return ''
+    },
+    lastSyncTime() {
+      try {
+        const ts = localStorage.getItem('SEMEDO_LAST_SYNC')
+        if (!ts) return ''
+        const d = new Date(parseInt(ts, 10))
+        return d.toLocaleString('pt-PT', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' })
+      } catch { return '' }
     },
   },
   watch: {
