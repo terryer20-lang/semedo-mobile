@@ -5,7 +5,7 @@
  * Uses PTStore Ebbinghaus system: PTStore.getDueWrongWords(), PTStore.correctReview(), PTStore.wrongReview()
  * IIFE global Vue component object. Uses Vue 3 Options API.
  */
-const ErrosView = {
+var ErrosView = {
   name: 'ErrosView',
   template: `
     <div class="erros-view px-4 pt-2 pb-24 min-h-screen">

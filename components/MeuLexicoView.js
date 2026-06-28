@@ -5,7 +5,7 @@
  * IIFE global Vue component object. Uses Vue 3 Options API.
  * Dependencies: PTStore (store/storage.js), Diacritics (utils/diacritics.js)
  */
-const MeuLexicoView = {
+var MeuLexicoView = {
   name: 'MeuLexicoView',
   template: `
     <div class="meu-lexico-view px-4 pt-2 pb-24 min-h-screen">

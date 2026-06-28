@@ -13,7 +13,7 @@
  *         (registers as global Vue component via app.component)
  */
 
-const StudyStats = {
+var StudyStats = {
   name: 'StudyStats',
   template: `
     <div class="StudyStats flex items-center gap-2.5 text-xs select-none">

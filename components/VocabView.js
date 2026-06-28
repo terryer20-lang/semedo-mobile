@@ -6,7 +6,7 @@
  * Dependencies: PTStore (store/storage.js), Diacritics (utils/diacritics.js),
  *   DICT_VOCAB_DATA (data/dict_vocab_data.js, global), localStorage 'UPLOADED_VOCAB_DATA'
  */
-const VocabView = {
+var VocabView = {
   name: 'VocabView',
   template: `
     <div class="vocab-view px-4 pt-2 pb-24 min-h-screen">

@@ -1,7 +1,7 @@
 /**
  * components/AppShell.js — Semedo Móvel 主外殼 + 登錄閘門
  */
-const AppShell = {
+var AppShell = {
   template: `
     <!-- ═══ LOGIN GATE ═══ -->
     <div v-if="!loggedIn" class="h-screen h-dvh flex items-center justify-center p-6"

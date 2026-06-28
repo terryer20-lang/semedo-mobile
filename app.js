@@ -31,10 +31,15 @@
   ]
 
   GLOBAL_COMPONENTS.forEach(function (name) {
-    if (typeof window[name] !== 'undefined' && window[name] !== null) {
-      app.component(name, window[name])
-    } else {
-      console.warn('[app] Global component "' + name + '" not found — skipping registration.')
+    try {
+      var comp = eval(name)
+      if (comp) {
+        app.component(name, comp)
+      } else {
+        console.warn('[app] Component "' + name + '" not found.')
+      }
+    } catch(e) {
+      console.warn('[app] Failed to register "' + name + '":', e.message)
     }
   })
 

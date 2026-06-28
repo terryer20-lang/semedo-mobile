@@ -7,7 +7,7 @@
  * IIFE global Vue component object. Uses Vue 3 Options API.
  * Dependencies: PTStore (store/storage.js), SyncManager (utils/sync.js)
  */
-const ConfigModal = {
+var ConfigModal = {
   name: 'ConfigModal',
   template: `
     <Teleport to="body">
