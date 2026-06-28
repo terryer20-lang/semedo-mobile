@@ -1,228 +1,123 @@
 /**
- * components/AppShell.js — Main application shell for Semedo-Mobile
- *
- * Layout:
- *  - Fixed glass header with app title + StudyStats + sync indicator
- *  - Main content area with <Transition> for tab view switching
- *  - Fixed bottom tab navigation bar (glass, safe-area aware)
- *  - ConfigModal overlay (triggered by gear button)
- *
- * Tabs:
- *  - Praticar  (VocabView)   — book-open icon
- *  - Meu Léxico (MeuLexicoView) — book-marked icon
- *  - Erros     (ErrosView)   — alert-triangle icon
- *  - Config    (separate gear button → opens ConfigModal, not a tab)
- *
- * Dependencies:
- *  - Vue 3 (global)
- *  - PTStore from store/storage.js
- *  - SyncManager from utils/sync.js
- *  - Lucide icons (lucide.createIcons() called after each render)
- *  - Anim from utils/animation.js (used indirectly via StudyStats)
- *
- * The view components (VocabView, MeuLexicoView, ErrosView) and ConfigModal
- * are expected to be globally registered by app.js.
+ * components/AppShell.js — Semedo Móvel 主外殼 + 登錄閘門
  */
-
 const AppShell = {
-  name: 'AppShell',
-
   template: `
-    <div class="AppShell relative min-h-screen bg-transparent flex flex-col">
-
-      <!-- ======== Fixed Header ======== -->
-      <header
-        class="fixed top-0 left-0 right-0 z-30 glass-card-strong rounded-none"
-        style="padding-top: calc(0.625rem + var(--safe-top)); padding-bottom: 0.5rem; padding-left: 1rem; padding-right: 1rem;"
-      >
-        <div class="flex items-center justify-between" style="min-height: 40px;">
-          <!-- App title -->
-          <h1 class="text-lg font-bold text-gray-800 tracking-tight leading-none">
-            Semedo
-          </h1>
-
-          <!-- Right side: stats + sync dot -->
-          <div class="flex items-center gap-2.5">
-            <StudyStats />
-
-            <!-- Sync status dot -->
-            <span
-              class="w-2 h-2 rounded-full flex-shrink-0 transition-colors duration-300"
-              :class="syncDotClass"
-              :title="syncStatus.connected ? 'Sincronizado' : 'Offline'"
-            ></span>
-          </div>
+    <!-- ═══ LOGIN GATE ═══ -->
+    <div v-if="!loggedIn" class="h-screen h-dvh flex items-center justify-center p-6"
+         style="background:radial-gradient(ellipse 80% 60% at 50%40%,rgba(212,168,67,0.10)0%,transparent 60%),linear-gradient(165deg,#e8ddce,#d6dbe3)">
+      <div class="glass-card-strong w-full max-w-sm p-6 text-center anim-fade-up" style="border-radius:16px">
+        <div class="w-14 h-14 mx-auto mb-3 rounded-full bg-azulejo/10 flex items-center justify-center">
+          <i data-lucide="book-open" class="w-7 h-7 text-azulejo"></i>
         </div>
+        <h2 class="text-lg font-bold text-slate-800 mb-1">Semedo Móvel</h2>
+        <p class="text-xs text-slate-400 mb-5">Inicie sessão para sincronizar o seu progresso</p>
+
+        <input type="email" v-model="loginEmail" placeholder="Email"
+               class="w-full px-3 py-2.5 glass-input text-sm mb-2.5" style="border-radius:12px">
+        <input type="password" v-model="loginPassword" placeholder="Password"
+               class="w-full px-3 py-2.5 glass-input text-sm mb-3" style="border-radius:12px"
+               @keydown.enter="doLogin">
+
+        <div class="flex gap-2 mb-2">
+          <button @click="doLogin" :disabled="loginLoading"
+                  class="flex-1 py-2.5 btn-primary text-sm font-medium disabled:opacity-50">
+            {{ loginLoading ? 'A entrar…' : 'Entrar' }}
+          </button>
+          <button @click="doRegister" :disabled="loginLoading"
+                  class="flex-1 py-2.5 btn-glass text-slate-600 text-sm font-medium disabled:opacity-50">
+            Registar
+          </button>
+        </div>
+
+        <input type="url" v-model="loginApiUrl" placeholder="API URL (opcional)"
+               class="w-full px-3 py-2 glass-input text-xs mb-2" style="border-radius:12px">
+
+        <p v-if="loginMsg" class="text-xs mt-2" :class="loginMsgType==='erro'?'text-erro':'text-certo'">{{ loginMsg }}</p>
+      </div>
+    </div>
+
+    <!-- ═══ MAIN APP ═══ -->
+    <div v-else class="flex flex-col h-screen h-dvh overflow-hidden">
+      <header class="h-12 flex items-center justify-between px-4 shrink-0 glass-base"
+              style="padding-top:var(--safe-top)">
+        <div class="flex items-center gap-2">
+          <span class="text-sm font-bold text-slate-800">Semedo</span>
+          <span :class="['inline-block w-1.5 h-1.5 rounded-full transition-colors',
+            syncStatus==='syncing'?'bg-amber-400 anim-pulse':syncStatus==='ok'?'bg-certo':'bg-slate-300']"></span>
+        </div>
+        <StudyStats />
       </header>
 
-      <!-- ======== Main Content ======== -->
-      <main
-        class="flex-1 px-4 overflow-y-auto"
-        style="padding-top: calc(4.5rem + var(--safe-top)); padding-bottom: calc(6.5rem + var(--safe-bottom));"
-      >
-        <Transition name="view" mode="out-in">
-          <component :is="currentView" :key="activeTab" />
-        </Transition>
+      <main class="flex-1 overflow-y-auto px-4 pt-3 pb-2">
+        <component :is="currentComponent" :key="currentView" />
       </main>
 
-      <!-- ======== Bottom Tab Navigation ======== -->
-      <nav
-        class="fixed bottom-0 left-0 right-0 z-30 nav-glass"
-        style="padding-bottom: calc(0.375rem + var(--safe-bottom));"
-      >
-        <div class="flex items-center justify-around px-1 pt-1">
-          <!-- Tab buttons (v-for) -->
-          <button
-            v-for="tab in tabs"
-            :key="tab.id"
-            @click="switchTab(tab.id)"
-            class="flex flex-col items-center justify-center py-1.5 px-2 min-w-[64px] rounded-xl transition-colors duration-150 active:scale-95"
-            :class="activeTab === tab.id ? 'text-azulejo' : 'text-gray-400'"
-            :aria-label="tab.label"
-          >
-            <i :data-lucide="tab.icon" class="w-5 h-5 pointer-events-none"></i>
-            <span class="text-[10px] mt-0.5 font-medium leading-tight pointer-events-none">
-              {{ tab.label }}
-            </span>
-            <span v-if="activeTab === tab.id" class="nav-indicator"></span>
+      <nav class="nav-glass shrink-0 pb-safe" style="padding-bottom:calc(var(--safe-bottom) + 4px)">
+        <div class="flex items-center justify-around h-14">
+          <button v-for="tab in tabs" :key="tab.id" @click="currentView=tab.id"
+                  class="flex flex-col items-center justify-center flex-1 h-full gap-0.5 transition-colors"
+                  :class="currentView===tab.id?'nav-active':'text-slate-400'">
+            <i :data-lucide="tab.icon" class="w-5 h-5"></i>
+            <span class="text-[9px] font-medium">{{ tab.label }}</span>
+            <div v-if="currentView===tab.id" class="nav-indicator"></div>
           </button>
-
-          <!-- Config gear (separate — opens modal, not a tab) -->
-          <button
-            @click="openConfig"
-            class="flex flex-col items-center justify-center py-1.5 px-2 min-w-[64px] rounded-xl text-gray-400 transition-colors duration-150 active:scale-95 hover:text-gray-600"
-            aria-label="Configurações"
-          >
-            <i data-lucide="settings" class="w-5 h-5 pointer-events-none"></i>
-            <span class="text-[10px] mt-0.5 font-medium leading-tight pointer-events-none">
-              Config
-            </span>
+          <button @click="showConfig=true"
+                  class="flex flex-col items-center justify-center flex-1 h-full gap-0.5 text-slate-400">
+            <i data-lucide="settings" class="w-5 h-5"></i>
+            <span class="text-[9px] font-medium">Config</span>
           </button>
         </div>
       </nav>
 
-      <!-- ======== Config Modal ======== -->
-      <ConfigModal
-        :show="showConfigModal"
-        @close="closeConfig"
-      />
-
+      <ConfigModal :show="showConfig" @close="showConfig=false" />
     </div>
   `,
-
+  components: { StudyStats, VocabView, MeuLexicoView, ErrosView, ConfigModal },
   data() {
     return {
-      /** Currently active tab ID: 'praticar' | 'meu-lexico' | 'erros' */
-      activeTab: 'praticar',
-
-      /** Whether the Config settings modal is visible */
-      showConfigModal: false,
-
-      /** Sync status object (polled) */
-      syncStatus: {
-        connected: false,
-        syncing: false,
-      },
-
-      /** Tab definitions */
-      tabs: [
-        { id: 'praticar',   label: 'Praticar',   icon: 'book-open' },
-        { id: 'meu-lexico', label: 'Meu Léxico',  icon: 'book-marked' },
-        { id: 'erros',      label: 'Erros',       icon: 'alert-triangle' },
-      ],
-
-      /** Sync status polling timer handle */
-      _syncTimer: null,
+      currentView: 'praticar', showConfig: false, syncStatus: 'idle',
+      loggedIn: false,
+      loginEmail: '', loginPassword: '', loginApiUrl: '', loginMsg: '', loginMsgType: '', loginLoading: false,
     }
   },
-
   computed: {
-    /**
-     * Returns the CSS class for the sync indicator dot.
-     * - Green pulsing = connected
-     * - Gray solid    = offline
-     */
-    syncDotClass() {
-      if (this.syncStatus.connected) {
-        return 'bg-green-500 anim-pulse'
-      }
-      return 'bg-gray-300'
+    currentComponent() {
+      return { praticar:'VocabView','meu-lexico':'MeuLexicoView', erros:'ErrosView' }[this.currentView] || 'VocabView'
     },
-
-    /**
-     * Resolves the current tab name to a globally-registered Vue component.
-     * Components must be registered by app.js before mounting.
-     */
-    currentView() {
-      switch (this.activeTab) {
-        case 'praticar':   return 'VocabView'
-        case 'meu-lexico': return 'MeuLexicoView'
-        case 'erros':      return 'ErrosView'
-        default:           return null
-      }
+    tabs() {
+      return [
+        { id:'praticar', icon:'book-open', label:'Praticar' },
+        { id:'meu-lexico', icon:'book-marked', label:'Meu Léxico' },
+        { id:'erros', icon:'alert-triangle', label:'Erros' },
+      ]
     },
   },
-
   methods: {
-    /** Switch to a different tab */
-    switchTab(tabId) {
-      this.activeTab = tabId
+    async doLogin() {
+      if(!this.loginEmail||!this.loginPassword){this.loginMsg='Preencha email e password';this.loginMsgType='erro';return}
+      this.loginLoading=true;this.loginMsg=''
+      try{if(this.loginApiUrl)SyncManager.setApiUrl(this.loginApiUrl);await SyncManager.login(this.loginEmail,this.loginPassword);this.loggedIn=true;this.loginPassword=''}
+      catch(e){this.loginMsg=e.message;this.loginMsgType='erro';this.loginLoading=false}
     },
-
-    /** Open the settings/config modal */
-    openConfig() {
-      this.showConfigModal = true
+    async doRegister() {
+      if(!this.loginEmail||!this.loginPassword){this.loginMsg='Preencha email e password';this.loginMsgType='erro';return}
+      this.loginLoading=true;this.loginMsg=''
+      try{if(this.loginApiUrl)SyncManager.setApiUrl(this.loginApiUrl);await SyncManager.register(this.loginEmail,this.loginPassword);this.loggedIn=true;this.loginPassword=''}
+      catch(e){this.loginMsg=e.message;this.loginMsgType='erro';this.loginLoading=false}
     },
-
-    /** Close the settings/config modal */
-    closeConfig() {
-      this.showConfigModal = false
-    },
-
-    /** Poll SyncManager connection status */
-    _pollSyncStatus() {
-      if (typeof SyncManager !== 'undefined' && SyncManager.isLoggedIn) {
-        this.syncStatus.connected = SyncManager.isLoggedIn()
-      } else {
-        this.syncStatus.connected = false
-      }
-    },
-
-    /** (Re)render Lucide icons in the DOM */
-    _renderIcons() {
-      if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        try {
-          lucide.createIcons()
-        } catch (_) {
-          // Silently ignore if Lucide isn't ready
-        }
-      }
+    updateSyncStatus() {
+      if(!SyncManager||!SyncManager.isLoggedIn()){this.syncStatus='idle';return}
+      const ls=localStorage.getItem('SEMEDO_LAST_SYNC')
+      this.syncStatus=ls&&(Date.now()-parseInt(ls))<300000?'ok':'idle'
     },
   },
-
   mounted() {
-    // Initial sync status
-    this._pollSyncStatus()
-
-    // Poll sync status every 5 seconds
-    this._syncTimer = setInterval(() => this._pollSyncStatus(), 5000)
-
-    // Render Lucide icons after mount
-    this.$nextTick(() => this._renderIcons())
+    this.loggedIn = typeof SyncManager !== 'undefined' && SyncManager.isLoggedIn && SyncManager.isLoggedIn()
+    this.updateSyncStatus()
+    setInterval(()=>this.updateSyncStatus(),30000)
+    if(SyncManager){const o=SyncManager.sync.bind(SyncManager);SyncManager.sync=async()=>{this.syncStatus='syncing';try{await o();this.syncStatus='ok';localStorage.setItem('SEMEDO_LAST_SYNC',String(Date.now()))}catch(e){this.syncStatus='idle';throw e}}}
+    this.$nextTick(()=>lucide.createIcons())
   },
-
-  updated() {
-    // Re-render Lucide icons after every DOM update (new tab content, etc.)
-    this.$nextTick(() => this._renderIcons())
-  },
-
-  beforeUnmount() {
-    if (this._syncTimer) {
-      clearInterval(this._syncTimer)
-      this._syncTimer = null
-    }
-  },
+  updated() { this.$nextTick(()=>lucide.createIcons()) },
 }
-
-// Make available globally for app.js
-if (typeof window !== 'undefined') window.AppShell = AppShell
