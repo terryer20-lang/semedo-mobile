@@ -12,7 +12,7 @@ const SyncManager = (() => {
   const USER_KEY    = 'SEMEDO_USER'
   const DIRTY_KEY   = 'SEMEDO_DIRTY_SECTIONS'
 
-  const DEFAULT_API_URL = 'http://localhost:3001/api'
+  const DEFAULT_API_URL = 'https://secretario-d1gw6ktzo78221450-1445624002.ap-shanghai.app.tcloudbase.com/semedo/api'
 
   let apiUrl = localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL
   let token  = localStorage.getItem(TOKEN_KEY) || ''
