@@ -30,9 +30,6 @@ const AppShell = {
           </button>
         </div>
 
-        <input type="url" v-model="loginApiUrl" placeholder="API URL (opcional)"
-               class="w-full px-3 py-2 glass-input text-xs mb-2" style="border-radius:12px">
-
         <p v-if="loginMsg" class="text-xs mt-2" :class="loginMsgType==='erro'?'text-erro':'text-certo'">{{ loginMsg }}</p>
       </div>
     </div>
@@ -78,7 +75,7 @@ const AppShell = {
     return {
       currentView: 'praticar', showConfig: false, syncStatus: 'idle',
       loggedIn: false,
-      loginEmail: '', loginPassword: '', loginApiUrl: '', loginMsg: '', loginMsgType: '', loginLoading: false,
+      loginEmail: '', loginPassword: '', loginMsg: '', loginMsgType: '', loginLoading: false,
     }
   },
   computed: {
@@ -97,13 +94,13 @@ const AppShell = {
     async doLogin() {
       if(!this.loginEmail||!this.loginPassword){this.loginMsg='Preencha email e password';this.loginMsgType='erro';return}
       this.loginLoading=true;this.loginMsg=''
-      try{if(this.loginApiUrl)SyncManager.setApiUrl(this.loginApiUrl);await SyncManager.login(this.loginEmail,this.loginPassword);this.loggedIn=true;this.loginPassword=''}
+      try{await SyncManager.login(this.loginEmail,this.loginPassword);this.loggedIn=true;this.loginPassword=''}
       catch(e){this.loginMsg=e.message;this.loginMsgType='erro';this.loginLoading=false}
     },
     async doRegister() {
       if(!this.loginEmail||!this.loginPassword){this.loginMsg='Preencha email e password';this.loginMsgType='erro';return}
       this.loginLoading=true;this.loginMsg=''
-      try{if(this.loginApiUrl)SyncManager.setApiUrl(this.loginApiUrl);await SyncManager.register(this.loginEmail,this.loginPassword);this.loggedIn=true;this.loginPassword=''}
+      try{await SyncManager.register(this.loginEmail,this.loginPassword);this.loggedIn=true;this.loginPassword=''}
       catch(e){this.loginMsg=e.message;this.loginMsgType='erro';this.loginLoading=false}
     },
     updateSyncStatus() {
