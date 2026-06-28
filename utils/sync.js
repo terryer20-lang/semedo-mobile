@@ -12,7 +12,7 @@ const SyncManager = (() => {
   const USER_KEY    = 'SEMEDO_USER'
   const DIRTY_KEY   = 'SEMEDO_DIRTY_SECTIONS'
 
-  const DEFAULT_API_URL = 'https://service-xxxxx.ap-guangzhou.apigateway.myqcloud.com/api'
+  const DEFAULT_API_URL = 'http://localhost:3001/api'
 
   let apiUrl = localStorage.getItem(API_URL_KEY) || DEFAULT_API_URL
   let token  = localStorage.getItem(TOKEN_KEY) || ''
