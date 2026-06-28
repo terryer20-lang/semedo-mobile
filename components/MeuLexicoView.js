@@ -11,17 +11,17 @@ var MeuLexicoView = {
     <div class="meu-lexico-view px-4 pt-2 pb-24 min-h-screen">
       <!-- Header -->
       <div class="flex items-center justify-between mb-4 anim-enter">
-        <h2 class="text-lg font-semibold text-[#1a1a2e]">Meu Léxico</h2>
-        <span class="text-xs text-[#8a8a9e] bg-white/50 px-2.5 py-1 rounded-full">
+        <h2 class="text-lg font-semibold text-slate-800">Meu Léxico</h2>
+        <span class="text-xs text-slate-400 bg-white/50 px-2.5 py-1 rounded-full">
           {{ lexiconWords.length }} palavra{{ lexiconWords.length !== 1 ? 's' : '' }}
         </span>
       </div>
 
       <!-- Direction Toggle -->
-      <div class="glass-card p-3 mb-3 anim-enter" style="animation-delay:0.03s">
+      <div class="glass p-3 mb-3 anim-enter" style="animation-delay:0.03s">
         <div class="flex items-center justify-center gap-4">
           <span class="text-sm font-medium transition-colors duration-200"
-            :class="direction === 'zh2pt' ? 'text-[#1a7bb5] font-semibold' : 'text-[#4a4a5e]'">ZH → PT</span>
+            :class="direction === 'zh2pt' ? 'text-[#1a7bb5] font-semibold' : 'text-slate-500'">ZH → PT</span>
           <button @click="toggleDirection"
             class="relative w-14 h-8 rounded-full transition-colors duration-200 focus:outline-none"
             :class="direction === 'pt2zh' ? 'bg-[#1a7bb5]' : 'bg-gray-300'"
@@ -31,14 +31,14 @@ var MeuLexicoView = {
               :class="direction === 'pt2zh' ? 'translate-x-6' : ''"></span>
           </button>
           <span class="text-sm font-medium transition-colors duration-200"
-            :class="direction === 'pt2zh' ? 'text-[#1a7bb5] font-semibold' : 'text-[#4a4a5e]'">PT → ZH</span>
+            :class="direction === 'pt2zh' ? 'text-[#1a7bb5] font-semibold' : 'text-slate-500'">PT → ZH</span>
         </div>
       </div>
 
       <!-- Search Bar -->
       <div class="mb-3 anim-enter" style="animation-delay:0.06s">
         <div class="relative">
-          <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a8a9e] pointer-events-none"></i>
+          <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none"></i>
           <input v-model="searchQuery"
             type="search"
             placeholder="Pesquisar no léxico…"
@@ -51,8 +51,8 @@ var MeuLexicoView = {
       <!-- Empty State (no words at all) -->
       <div v-if="filteredWords.length === 0 && lexiconWords.length === 0" class="anim-enter text-center py-12" style="animation-delay:0.09s">
         <div class="text-5xl mb-4 opacity-50">📖</div>
-        <h3 class="text-base font-semibold text-[#1a1a2e] mb-1">Léxico vazio</h3>
-        <p class="text-sm text-[#8a8a9e] mb-4">
+        <h3 class="text-base font-semibold text-slate-800 mb-1">Léxico vazio</h3>
+        <p class="text-sm text-slate-400 mb-4">
           As palavras que acertar nas rondas de prática aparecerão aqui.
         </p>
         <button disabled class="btn-primary px-6 py-2.5 text-sm font-semibold opacity-40" style="min-height:44px">
@@ -63,7 +63,7 @@ var MeuLexicoView = {
       <!-- No Search Results -->
       <div v-else-if="filteredWords.length === 0" class="anim-enter text-center py-8" style="animation-delay:0.09s">
         <div class="text-3xl mb-3 opacity-40">🔍</div>
-        <p class="text-sm text-[#8a8a9e]">Nenhuma palavra encontrada para "{{ searchQuery }}"</p>
+        <p class="text-sm text-slate-400">Nenhuma palavra encontrada para "{{ searchQuery }}"</p>
       </div>
 
       <!-- Word List -->
@@ -81,27 +81,27 @@ var MeuLexicoView = {
         <!-- Words -->
         <div class="space-y-2 anim-enter" style="animation-delay:0.12s">
           <div v-for="(word, i) in filteredWords" :key="word.pt + '|' + i"
-            class="glass-card p-3.5 flex items-center justify-between transition-all duration-150 active:scale-[0.98]"
+            class="glass p-3.5 flex items-center justify-between transition-all duration-150 active:scale-[0.98]"
             style="min-height:56px">
             <div class="flex-1 min-w-0 pr-2">
               <div v-if="direction === 'zh2pt'" class="flex items-baseline gap-2">
-                <span class="font-medium text-[#1a1a2e] text-base">{{ word.zh }}</span>
-                <span class="text-sm text-[#4a4a5e]">→</span>
-                <span class="text-sm text-[#4a4a5e] truncate">{{ word.pt }}</span>
+                <span class="font-medium text-slate-800 text-base">{{ word.zh }}</span>
+                <span class="text-sm text-slate-500">→</span>
+                <span class="text-sm text-slate-500 truncate">{{ word.pt }}</span>
               </div>
               <div v-else class="flex items-baseline gap-2">
-                <span class="font-medium text-[#1a1a2e] text-base">{{ word.pt }}</span>
-                <span class="text-sm text-[#4a4a5e]">→</span>
-                <span class="text-sm text-[#4a4a5e] truncate">{{ word.zh }}</span>
+                <span class="font-medium text-slate-800 text-base">{{ word.pt }}</span>
+                <span class="text-sm text-slate-500">→</span>
+                <span class="text-sm text-slate-500 truncate">{{ word.zh }}</span>
               </div>
-              <div v-if="word.pos" class="text-xs text-[#8a8a9e] mt-0.5">
+              <div v-if="word.pos" class="text-xs text-slate-400 mt-0.5">
                 {{ word.pos }}
                 <span v-if="word.added" class="ml-2">• {{ formatDate(word.added) }}</span>
               </div>
             </div>
             <!-- Remove button -->
             <button @click="removeWord(word)"
-              class="btn-glass p-2 flex-shrink-0 text-[#8a8a9e] hover:text-[#c1121f] transition-colors"
+              class="btn-glass p-2 flex-shrink-0 text-slate-400 hover:text-[#c1121f] transition-colors"
               style="min-height:40px;min-width:40px"
               title="Remover do léxico">
               <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -124,7 +124,7 @@ var MeuLexicoView = {
 
             <!-- Progress -->
             <div v-if="!roundCompleted && roundWords.length > 0" class="px-5 pb-2">
-              <div class="flex justify-between text-xs text-[#4a4a5e] mb-1">
+              <div class="flex justify-between text-xs text-slate-500 mb-1">
                 <span class="font-medium">{{ currentIndex + 1 }} / {{ roundWords.length }}</span>
                 <span class="text-[#2d6a4f]">{{ correctInRound }} ✅</span>
               </div>
@@ -139,29 +139,29 @@ var MeuLexicoView = {
               <!-- Completed -->
               <div v-if="roundCompleted" class="text-center py-2">
                 <div class="text-5xl mb-3">{{ roundResultsEmoji }}</div>
-                <h3 class="text-lg font-bold text-[#1a1a2e] mb-1">Ronda Completa!</h3>
-                <div class="glass-card-strong p-4 mb-4">
+                <h3 class="text-lg font-bold text-slate-800 mb-1">Ronda Completa!</h3>
+                <div class="glass-strong p-4 mb-4">
                   <div class="grid grid-cols-2 gap-4 text-center">
                     <div>
                       <div class="text-3xl font-bold text-[#2d6a4f]">{{ roundResults.correct }}</div>
-                      <div class="text-xs text-[#4a4a5e] mt-0.5">Correctas</div>
+                      <div class="text-xs text-slate-500 mt-0.5">Correctas</div>
                     </div>
                     <div>
                       <div class="text-3xl font-bold text-[#c1121f]">{{ roundResults.wrong }}</div>
-                      <div class="text-xs text-[#4a4a5e] mt-0.5">Erradas</div>
+                      <div class="text-xs text-slate-500 mt-0.5">Erradas</div>
                     </div>
                   </div>
                   <div class="mt-3 pt-3 border-t border-gray-100">
                     <div class="text-lg font-bold" :class="roundResultsColor">{{ roundResults.percent }}%</div>
-                    <div class="text-xs text-[#4a4a5e]">Taxa de acerto</div>
+                    <div class="text-xs text-slate-500">Taxa de acerto</div>
                   </div>
                 </div>
-                <div v-if="roundResults.wrongWords.length > 0" class="glass-card p-2 mb-4 text-left max-h-32 overflow-y-auto">
+                <div v-if="roundResults.wrongWords.length > 0" class="glass p-2 mb-4 text-left max-h-32 overflow-y-auto">
                   <p class="text-xs font-medium text-[#c1121f] mb-1">Palavras para revisar:</p>
                   <div v-for="w in roundResults.wrongWords" :key="w.pt"
                     class="flex justify-between text-xs py-1 border-b border-gray-50 last:border-b-0">
                     <span>{{ direction === 'zh2pt' ? w.zh : w.pt }}</span>
-                    <span class="text-[#8a8a9e]">{{ direction === 'zh2pt' ? w.pt : w.zh }}</span>
+                    <span class="text-slate-400">{{ direction === 'zh2pt' ? w.pt : w.zh }}</span>
                   </div>
                 </div>
                 <div class="flex gap-3">
@@ -177,11 +177,11 @@ var MeuLexicoView = {
               <!-- Flashcard -->
               <div v-else-if="currentWord">
                 <div class="text-center mb-6">
-                  <div class="text-xs text-[#8a8a9e] mb-1">{{ currentWord.pos || '—' }}</div>
-                  <div class="text-2xl font-bold text-[#1a1a2e] my-6 py-4 px-2 glass-card-strong inline-block min-w-[60%]">
+                  <div class="text-xs text-slate-400 mb-1">{{ currentWord.pos || '—' }}</div>
+                  <div class="text-2xl font-bold text-slate-800 my-6 py-4 px-2 glass-strong inline-block min-w-[60%]">
                     {{ direction === 'zh2pt' ? currentWord.zh : currentWord.pt }}
                   </div>
-                  <div class="text-xs text-[#8a8a9e]">{{ direction === 'zh2pt' ? 'Chinês → Português' : 'Português → Chinês' }}</div>
+                  <div class="text-xs text-slate-400">{{ direction === 'zh2pt' ? 'Chinês → Português' : 'Português → Chinês' }}</div>
                 </div>
                 <div class="mb-3">
                   <input ref="answerInput"
@@ -198,15 +198,15 @@ var MeuLexicoView = {
                     autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
                 </div>
                 <div v-if="feedbackState" class="mb-4">
-                  <div v-if="feedbackState === 'correct'" class="glass-card bg-[#2d6a4f]/10 p-3.5 text-center rounded-xl border border-[#2d6a4f]/20">
+                  <div v-if="feedbackState === 'correct'" class="glass bg-[#2d6a4f]/10 p-3.5 text-center rounded-xl border border-[#2d6a4f]/20">
                     <div class="text-xl mb-1">✅ Correcto!</div>
-                    <div class="text-sm text-[#4a4a5e] font-medium">
+                    <div class="text-sm text-slate-500 font-medium">
                       {{ direction === 'zh2pt' ? currentWord.zh + ' = ' + currentWord.pt : currentWord.pt + ' = ' + currentWord.zh }}
                     </div>
                   </div>
-                  <div v-else class="glass-card bg-[#c1121f]/10 p-3.5 text-center rounded-xl border border-[#c1121f]/20">
+                  <div v-else class="glass bg-[#c1121f]/10 p-3.5 text-center rounded-xl border border-[#c1121f]/20">
                     <div class="text-xl mb-1">❌ Errado</div>
-                    <div class="text-sm text-[#4a4a5e]">Resposta correcta: <strong class="text-[#1a1a2e]">{{ direction === 'zh2pt' ? currentWord.pt : currentWord.zh }}</strong></div>
+                    <div class="text-sm text-slate-500">Resposta correcta: <strong class="text-slate-800">{{ direction === 'zh2pt' ? currentWord.pt : currentWord.zh }}</strong></div>
                   </div>
                 </div>
                 <div class="flex gap-3">

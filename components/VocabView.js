@@ -1,460 +1,386 @@
 /**
- * components/VocabView.js — Vocabulário (Main Practice View)
- * Mobile-optimized: CEFR level selector, practice rounds, flashcard interaction, CSV upload
- *
- * IIFE global Vue component object. Uses Vue 3 Options API.
- * Dependencies: PTStore (store/storage.js), Diacritics (utils/diacritics.js),
- *   DICT_VOCAB_DATA (data/dict_vocab_data.js, global), localStorage 'UPLOADED_VOCAB_DATA'
+ * components/VocabView.js — 方向選擇 → 級別網格 → 無限背詞
+ * CAPLE Glass 暖色葡式風格
  */
 var VocabView = {
   name: 'VocabView',
   template: `
-    <div class="vocab-view px-4 pt-2 pb-24 min-h-screen">
-      <!-- Header -->
-      <div class="flex items-center justify-between mb-4 anim-enter">
-        <h2 class="text-lg font-semibold text-[#1a1a2e]">Vocabulário</h2>
-        <button @click="showUpload = true" class="btn-glass flex items-center gap-1.5 px-3 py-2 text-sm font-medium" style="min-height:44px">
-          <i data-lucide="upload" class="w-4 h-4"></i>
-          <span>CSV</span>
-        </button>
-      </div>
+    <div class="vocab-view px-4 pt-2 pb-28 min-h-screen">
 
-      <!-- CEFR Level Selector — Horizontal Scroll -->
-      <div class="mb-3 anim-enter" style="animation-delay:0.03s">
-        <label class="text-xs font-medium text-[#4a4a5e] mb-1.5 block">Nível CEFR</label>
-        <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar scrollable-x">
-          <button v-for="lvl in cefrLevels" :key="lvl"
-            @click="selectedLevel = lvl"
-            class="flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-150"
-            :class="selectedLevel === lvl ? 'bg-[#1a7bb5] text-white shadow-md' : 'bg-white/60 text-[#4a4a5e] border border-white/40'"
-            style="min-height:44px;min-width:52px">
-            {{ lvl }}
+      <!-- ═══ 步驟1：選擇方向 ═══ -->
+      <div v-if="mode === 'dir'">
+        <div class="pt-6 text-center mb-2">
+          <div class="text-4xl mb-3">📚</div>
+          <h2 class="text-xl font-bold text-slate-800 mb-1">Vocabulário</h2>
+          <p class="text-xs text-slate-400 mb-8">Escolha a direcção de estudo</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 px-2">
+          <button @click="pickDirection('cn2pt')" class="dir-card glass-strong p-6 flex flex-col items-center justify-center gap-3 text-center"
+            style="border-radius:24px;min-height:160px;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1)"
+            :style="{ border: selectedDirTemp === 'cn2pt' ? '2px solid #1a7bb5' : '0.5px solid rgba(255,255,255,0.6)' }">
+            <div class="w-14 h-14 rounded-[18px] flex items-center justify-center text-xl font-bold"
+              :style="{ background: selectedDirTemp === 'cn2pt' ? 'rgba(26,123,181,0.15)' : 'rgba(255,255,255,0.5)', color: selectedDirTemp === 'cn2pt' ? '#1a7bb5' : '#64748b' }">
+              CN
+            </div>
+            <div>
+              <div class="text-base font-bold text-slate-800">CN → PT</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Chinês para Português</div>
+            </div>
+          </button>
+
+          <button @click="pickDirection('pt2cn')" class="dir-card glass-strong p-6 flex flex-col items-center justify-center gap-3 text-center"
+            style="border-radius:24px;min-height:160px;transition:all 0.25s cubic-bezier(0.34,1.56,0.64,1)"
+            :style="{ border: selectedDirTemp === 'pt2cn' ? '2px solid #1a7bb5' : '0.5px solid rgba(255,255,255,0.6)' }">
+            <div class="w-14 h-14 rounded-[18px] flex items-center justify-center text-xl font-bold"
+              :style="{ background: selectedDirTemp === 'pt2cn' ? 'rgba(26,123,181,0.15)' : 'rgba(255,255,255,0.5)', color: selectedDirTemp === 'pt2cn' ? '#1a7bb5' : '#64748b' }">
+              PT
+            </div>
+            <div>
+              <div class="text-base font-bold text-slate-800">PT → CN</div>
+              <div class="text-[10px] text-slate-400 mt-0.5">Português para Chinês</div>
+            </div>
           </button>
         </div>
+
+        <div class="mt-6 text-center">
+          <p class="text-[10px] text-slate-400">As palavras memorizadas sincronizam automaticamente</p>
+        </div>
       </div>
 
-      <!-- Direction Toggle -->
-      <div class="glass-card p-3 mb-3 anim-enter" style="animation-delay:0.06s">
-        <div class="flex items-center justify-center gap-4">
-          <span class="text-sm font-medium transition-colors duration-200" :class="direction === 'cn2pt' ? 'text-[#1a7bb5] font-semibold' : 'text-[#4a4a5e]'">CN → PT</span>
-          <button @click="toggleDirection" class="relative w-14 h-8 rounded-full transition-colors duration-200 focus:outline-none"
-            :class="direction === 'pt2cn' ? 'bg-[#1a7bb5]' : 'bg-gray-300'" style="min-height:44px;min-width:56px"
-            role="switch" :aria-checked="direction === 'pt2cn'">
-            <span class="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-200"
-              :class="direction === 'pt2cn' ? 'translate-x-6' : ''"></span>
+      <!-- ═══ 步驟2：級別網格 ═══ -->
+      <div v-else-if="mode === 'grid'">
+        <!-- Header with direction indicator -->
+        <div class="flex items-center justify-between mb-1 pt-1">
+          <div class="flex items-center gap-2">
+            <h2 class="text-xl font-bold text-slate-800">Vocabulário</h2>
+          </div>
+          <span class="text-[11px] text-slate-400 bg-white/50 px-2.5 py-1 rounded-full">
+            {{ totalWords }} palavras
+          </span>
+        </div>
+
+        <!-- Active direction pill (tappable to go back) -->
+        <div class="flex items-center gap-2 mb-5">
+          <button @click="mode = 'dir'"
+            class="glass rounded-xl px-3.5 py-2 text-sm font-semibold flex items-center gap-1.5"
+            style="min-height:40px;transition:all 0.15s ease">
+            <i data-lucide="arrow-left" class="w-4 h-4 text-slate-400"></i>
+            <span :class="direction === 'cn2pt' ? 'text-azulejo' : 'text-slate-500'">
+              {{ direction === 'cn2pt' ? 'CN → PT' : 'PT → CN' }}
+            </span>
           </button>
-          <span class="text-sm font-medium transition-colors duration-200" :class="direction === 'pt2cn' ? 'text-[#1a7bb5] font-semibold' : 'text-[#4a4a5e]'">PT → CN</span>
+          <span class="text-xs text-slate-400">Escolha o nível</span>
+        </div>
+
+        <!-- 2×3 級別卡片 -->
+        <div class="grid grid-cols-2 gap-3">
+          <div v-for="(lvl, i) in cefrLevels" :key="lvl.id"
+            @click="startPractice(lvl)"
+            class="level-card p-4 flex flex-col items-center justify-center gap-2"
+            :style="{ animation: 'fade-up 0.4s cubic-bezier(0.16,1,0.3,1) ' + (i*0.06) + 's both' }">
+            <div class="level-badge" :style="{ background: lvl.color + '18', color: lvl.color }">
+              {{ lvl.id }}
+            </div>
+            <div class="level-label">{{ lvl.label }}</div>
+            <div class="level-count">{{ lvl.count }} palavras</div>
+          </div>
         </div>
       </div>
 
-      <!-- Practice Round Setup -->
-      <div class="glass-card-strong p-4 mb-4 anim-enter" style="animation-delay:0.09s">
-        <label class="text-xs font-medium text-[#4a4a5e] mb-2 block">Quantidade</label>
-        <div class="flex gap-2 mb-3">
-          <button v-for="opt in countOptions" :key="opt.value"
-            @click="selectedCount = opt.value"
-            class="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
-            :class="selectedCount === opt.value ? 'bg-[#1a7bb5] text-white shadow-md' : 'bg-white/60 text-[#4a4a5e] border border-white/40'"
-            style="min-height:44px">
-            {{ opt.label }}
-          </button>
+      <!-- ═══ 無限練習模式 ═══ -->
+      <div v-else-if="mode === 'practice'" class="flex flex-col min-h-[calc(100vh-160px)]">
+        <div class="flex items-center justify-between mb-3">
+          <div>
+            <span class="text-xs text-slate-400 font-medium">{{ activeLevel?.id }}</span>
+            <span class="text-slate-300 mx-1.5">·</span>
+            <span class="text-xs text-slate-400">{{ answeredCount }} respondidas</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs" :class="correctInRound > 0 ? 'text-certo/70' : 'text-slate-300'">
+              ✅ {{ correctInRound }}
+            </span>
+            <button @click="endPractice" class="btn-danger px-4 py-2 text-sm font-semibold flex items-center gap-1.5"
+              style="min-height:40px">
+              <i data-lucide="square" class="w-4 h-4 fill-current"></i> Terminar
+            </button>
+          </div>
         </div>
-        <button @click="startRound" :disabled="!hasWords"
-          class="btn-primary w-full py-3 text-base font-semibold flex items-center justify-center gap-2"
-          style="min-height:50px">
-          <i data-lucide="play" class="w-5 h-5"></i>
-          Iniciar Ronda
-        </button>
-        <p v-if="!hasWords" class="text-xs text-center text-[#8a8a9e] mt-2">
-          Nenhuma palavra disponível para este nível
-        </p>
-      </div>
 
-      <!-- Stats Summary -->
-      <div class="glass-card p-3 mb-4 anim-enter" style="animation-delay:0.12s">
-        <div class="flex justify-between items-center text-sm">
-          <span class="text-[#4a4a5e]">Palavras disponíveis:</span>
-          <span class="font-semibold text-[#1a1a2e]">{{ filteredWords.length }}</span>
+        <div class="w-full h-1 bg-slate-200/60 rounded-full overflow-hidden mb-8">
+          <div class="h-full rounded-full transition-all duration-500 ease-out"
+            :style="{ width: progressPercent + '%', background: progressColor }"></div>
         </div>
-        <div class="flex justify-between items-center text-sm mt-1.5">
-          <span class="text-[#4a4a5e]">No meu léxico:</span>
-          <span class="font-semibold text-[#1a1a2e]">{{ PTStore.getMyVocabCount() }}</span>
-        </div>
-      </div>
 
-      <!-- ─── PRACTICE POPUP (Bottom Sheet) ─── -->
-      <Teleport to="body">
-        <div v-if="practiceActive" class="fixed inset-0 z-50 flex flex-col justify-end" @click.self="cancelPractice">
-          <!-- Backdrop -->
-          <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="cancelPractice"></div>
-          <!-- Sheet -->
-          <div class="relative w-full max-w-lg mx-auto bg-white/95 backdrop-blur-xl rounded-t-2xl shadow-xl overflow-hidden animate-slide-up"
-            style="max-height:90vh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)">
-            
-            <!-- Drag Handle -->
-            <div class="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
-              <div class="w-10 h-1 rounded-full bg-gray-300"></div>
+        <div class="flex-1 flex flex-col items-center justify-center -mt-8">
+          <div class="w-full max-w-sm">
+            <div class="text-center mb-2">
+              <div class="flex items-center justify-center gap-2 mb-3">
+                <span class="text-[10px] text-slate-400 bg-white/50 px-2 py-0.5 rounded-full">
+                  {{ currentWord?.pos || '—' }}
+                </span>
+                <span class="text-[10px] text-slate-400 bg-white/50 px-2 py-0.5 rounded-full">
+                  {{ direction === 'cn2pt' ? 'CN→PT' : 'PT→CN' }}
+                </span>
+              </div>
+              <div class="flashcard-word mb-1" :key="'w' + wordIndex">
+                {{ direction === 'cn2pt' ? currentWord?.zh : currentWord?.pt }}
+              </div>
+              <div v-if="currentWord?.example" class="text-xs text-slate-400 italic mt-1">
+                {{ currentWord.example }}
+              </div>
             </div>
 
-            <!-- Progress Bar -->
-            <div v-if="!roundCompleted && roundWords.length > 0" class="px-5 pb-2">
-              <div class="flex justify-between items-center text-xs text-[#4a4a5e] mb-1">
-                <span class="font-medium">{{ currentIndex + 1 }} / {{ roundWords.length }}</span>
-                <span class="text-[#2d6a4f]">{{ correctInRound }} ✅</span>
-              </div>
-              <div class="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                <div class="h-full bg-[#1a7bb5] rounded-full transition-all duration-300 ease-out"
-                  :style="{ width: roundWords.length > 0 ? ((currentIndex + 1) / roundWords.length * 100) + '%' : '0%' }"></div>
-              </div>
+            <div class="mt-6 mb-3">
+              <input ref="answerInput"
+                v-model="userAnswer"
+                @keyup.enter="checkAnswer"
+                :placeholder="direction === 'cn2pt' ? 'Escreva em português…' : 'Escreva em chinês…'"
+                class="glass-input w-full px-5 py-4 text-base text-center rounded-2xl"
+                :class="{
+                  '!border-certo/30 !ring-2 !ring-certo/10 !bg-certo/5': feedbackState === 'correct',
+                  '!border-erro/30 !ring-2 !ring-erro/10 !bg-erro/5': feedbackState === 'wrong'
+                }"
+                style="min-height:56px;font-size:19px"
+                :disabled="feedbackState !== null"
+                autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
             </div>
 
-            <!-- Scrollable Content -->
-            <div class="px-5 py-4 overflow-y-auto" style="max-height:calc(90vh - 160px)">
-              <!-- ═══ ROUND COMPLETED ═══ -->
-              <div v-if="roundCompleted" class="text-center py-2">
-                <div class="text-5xl mb-3 anim-pop">{{ resultsEmoji }}</div>
-                <h3 class="text-lg font-bold text-[#1a1a2e] mb-1">Ronda Completa!</h3>
-                <p class="text-xs text-[#8a8a9e] mb-4">{{ roundWords.length }} palavras praticadas</p>
+            <div class="flex gap-2">
+              <button v-if="!feedbackState" @click="checkAnswer" :disabled="!userAnswer.trim()"
+                class="btn-primary flex-1 py-3.5 text-base font-semibold flex items-center justify-center gap-2"
+                style="min-height:54px;border-radius:16px">
+                <i data-lucide="check" class="w-5 h-5"></i> Verificar
+              </button>
+              <button v-else @click="nextWord" @keyup.enter="nextWord"
+                class="btn-primary flex-1 py-3.5 text-base font-semibold flex items-center justify-center gap-2"
+                style="min-height:54px;border-radius:16px">
+                <i data-lucide="arrow-right" class="w-5 h-5"></i>
+                {{ wordIndex < practiceWords.length - 1 ? 'Seguinte' : 'Próxima' }}
+              </button>
+              <button @click="endPractice"
+                class="btn-glass w-14 flex items-center justify-center"
+                style="min-height:54px;min-width:54px;border-radius:16px">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </div>
 
-                <div class="glass-card-strong p-4 mb-4">
-                  <div class="grid grid-cols-2 gap-4 text-center">
-                    <div>
-                      <div class="text-3xl font-bold text-[#2d6a4f]">{{ results.correct }}</div>
-                      <div class="text-xs text-[#4a4a5e] mt-0.5">Correctas</div>
-                    </div>
-                    <div>
-                      <div class="text-3xl font-bold text-[#c1121f]">{{ results.wrong }}</div>
-                      <div class="text-xs text-[#4a4a5e] mt-0.5">Erradas</div>
-                    </div>
-                  </div>
-                  <div class="mt-3 pt-3 border-t border-gray-100">
-                    <div class="text-lg font-bold" :class="resultsColor">{{ results.percent }}%</div>
-                    <div class="text-xs text-[#4a4a5e]">Taxa de acerto</div>
-                  </div>
-                </div>
-
-                <!-- Wrong Words Review List -->
-                <div v-if="results.wrongWords.length > 0" class="mb-4 text-left">
-                  <h4 class="text-sm font-medium text-[#4a4a5e] mb-2 flex items-center gap-1">
-                    <i data-lucide="alert-circle" class="w-4 h-4 text-[#c1121f]"></i>
-                    Palavras para revisar ({{ results.wrongWords.length }})
-                  </h4>
-                  <div class="glass-card p-2 max-h-40 overflow-y-auto">
-                    <div v-for="(w, i) in results.wrongWords" :key="i"
-                      class="flex justify-between items-center py-1.5 px-2 border-b border-gray-50 last:border-b-0 text-sm">
-                      <span class="font-medium text-[#1a1a2e]">{{ direction === 'cn2pt' ? w.zh : w.pt }}</span>
-                      <span class="text-[#8a8a9e] text-xs">→ {{ direction === 'cn2pt' ? w.pt : w.zh }}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div v-else class="mb-4 glass-card bg-[#2d6a4f]/5 p-3 text-center">
-                  <div class="text-sm text-[#2d6a4f] font-medium">🌟 Todas as respostas correctas!</div>
-                </div>
-
-                <div class="flex gap-3">
-                  <button @click="startRound" class="btn-primary flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5" style="min-height:48px">
-                    <i data-lucide="rotate-cw" class="w-4 h-4"></i> Nova Ronda
-                  </button>
-                  <button @click="cancelPractice" class="btn-glass flex-1 py-3 text-sm font-semibold" style="min-height:48px">
-                    Fechar
-                  </button>
+            <div v-if="feedbackState" class="mt-3 transition-all duration-200"
+              :class="{ 'anim-pop': feedbackState === 'correct', 'anim-shake': feedbackState === 'wrong' }">
+              <div v-if="feedbackState === 'correct'"
+                class="feedback-correct rounded-2xl p-3.5 text-center">
+                <div class="text-base mb-0.5 font-semibold text-certo">✅ Correcto!</div>
+                <div class="text-sm text-slate-500 font-medium">
+                  {{ direction === 'cn2pt' ? currentWord?.zh + ' = ' + currentWord?.pt : currentWord?.pt + ' = ' + currentWord?.zh }}
                 </div>
               </div>
-
-              <!-- ═══ ACTIVE FLASHCARD ═══ -->
-              <div v-else-if="currentWord" class="flashcard-area">
-                <!-- Word Display -->
-                <div class="text-center mb-6">
-                  <div class="text-xs font-medium text-[#8a8a9e] mb-1 flex items-center justify-center gap-2">
-                    <span class="bg-white/60 px-2 py-0.5 rounded-full">{{ currentWord.cefr || '—' }}</span>
-                    <span class="bg-white/60 px-2 py-0.5 rounded-full">{{ currentWord.pos || '—' }}</span>
-                  </div>
-                  <div class="text-2xl font-bold text-[#1a1a2e] my-6 py-4 px-2 glass-card-strong inline-block min-w-[60%]">
-                    {{ direction === 'cn2pt' ? currentWord.zh : currentWord.pt }}
-                  </div>
-                  <div class="text-xs text-[#8a8a9e]">
-                    {{ direction === 'cn2pt' ? 'Chinês → Português' : 'Português → Chinês' }}
-                  </div>
+              <div v-else class="feedback-wrong rounded-2xl p-3.5 text-center">
+                <div class="text-base mb-0.5 font-semibold text-erro">❌ {{ wrongCount }}º erro</div>
+                <div class="text-sm text-slate-500">
+                  Resposta correcta:
+                  <strong class="text-slate-800 font-semibold">
+                    {{ direction === 'cn2pt' ? currentWord?.pt : currentWord?.zh }}
+                  </strong>
                 </div>
-
-                <!-- Answer Input -->
-                <div class="mb-3">
-                  <input ref="answerInput"
-                    v-model="userAnswer"
-                    @keyup.enter="checkAnswer"
-                    :placeholder="direction === 'cn2pt' ? 'Escreva em português…' : 'Escreva em chinês…'"
-                    class="glass-input w-full px-4 py-3 text-base text-center transition-all duration-200"
-                    :class="{
-                      'border-[#2d6a4f]/50 ring-2 ring-[#2d6a4f]/20 bg-[#2d6a4f]/5': feedbackState === 'correct',
-                      'border-[#c1121f]/50 ring-2 ring-[#c1121f]/20 bg-[#c1121f]/5': feedbackState === 'wrong'
-                    }"
-                    style="min-height:50px;font-size:18px"
-                    :disabled="feedbackState !== null"
-                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-                </div>
-
-                <!-- Feedback Display -->
-                <div v-if="feedbackState" class="mb-4 transition-all duration-200">
-                  <div v-if="feedbackState === 'correct'" class="glass-card bg-[#2d6a4f]/10 border border-[#2d6a4f]/20 p-3.5 text-center rounded-xl">
-                    <div class="text-xl mb-1">✅ Correcto!</div>
-                    <div class="text-sm text-[#4a4a5e] font-medium">
-                      {{ direction === 'cn2pt' ? currentWord.zh + ' = ' + currentWord.pt : currentWord.pt + ' = ' + currentWord.zh }}
-                    </div>
-                    <div v-if="feedbackHint" class="text-xs text-[#d4a843] mt-1">{{ feedbackHint }}</div>
-                  </div>
-                  <div v-else class="glass-card bg-[#c1121f]/10 border border-[#c1121f]/20 p-3.5 text-center rounded-xl">
-                    <div class="text-xl mb-1">❌ Errado</div>
-                    <div class="text-sm text-[#4a4a5e]">
-                      Resposta correcta:
-                    </div>
-                    <div class="text-base font-bold text-[#1a1a2e] mt-0.5">
-                      <strong>{{ direction === 'cn2pt' ? currentWord.pt : currentWord.zh }}</strong>
-                    </div>
-                    <div v-if="feedbackHint" class="text-xs text-[#d4a843] mt-1">{{ feedbackHint }}</div>
-                  </div>
-                </div>
-
-                <!-- Action Buttons -->
-                <div class="flex gap-3">
-                  <button v-if="!feedbackState" @click="checkAnswer" class="btn-primary flex-1 py-3 text-base font-semibold flex items-center justify-center gap-1.5" style="min-height:50px">
-                    <i data-lucide="check" class="w-5 h-5"></i> Verificar
-                  </button>
-                  <button v-if="feedbackState" @click="nextWord" class="btn-primary flex-1 py-3 text-base font-semibold flex items-center justify-center gap-1.5" style="min-height:50px">
-                    <i data-lucide="arrow-right" class="w-5 h-5"></i> Seguinte
-                  </button>
-                  <button @click="cancelPractice" class="btn-glass w-14 flex items-center justify-center" style="min-height:50px;min-width:50px">
-                    <i data-lucide="x" class="w-5 h-5"></i>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Fallback -->
-              <div v-else class="text-center py-8">
-                <p class="text-sm text-[#8a8a9e]">Nenhuma palavra carregada.</p>
-                <button @click="cancelPractice" class="btn-primary mt-3 px-6 py-2 text-sm">Fechar</button>
               </div>
             </div>
           </div>
         </div>
-      </Teleport>
 
-      <!-- ─── UPLOAD CSV BOTTOM SHEET ─── -->
-      <Teleport to="body">
-        <div v-if="showUpload" class="fixed inset-0 z-50 flex flex-col justify-end" @click.self="showUpload = false">
-          <!-- Backdrop -->
-          <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="showUpload = false"></div>
-          <!-- Sheet -->
-          <div class="relative w-full max-w-lg mx-auto bg-white/95 backdrop-blur-xl rounded-t-2xl shadow-xl overflow-hidden"
-            style="max-height:85vh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)">
-            
-            <!-- Handle -->
-            <div class="flex justify-center pt-3 pb-1">
-              <div class="w-10 h-1 rounded-full bg-gray-300"></div>
+        <div class="text-center pb-2">
+          <span class="text-[10px] text-slate-400">Enter para verificar · Enter novamente para continuar</span>
+        </div>
+      </div>
+
+      <!-- ═══ 結果頁 ═══ -->
+      <div v-else-if="mode === 'results'" class="flex flex-col items-center justify-center min-h-[calc(100vh-160px)] px-4">
+        <div class="w-full max-w-sm text-center anim-scale-in">
+          <div class="text-6xl mb-4 anim-bounce-in">{{ resultsEmoji }}</div>
+
+          <h3 class="text-2xl font-bold text-slate-800 mb-1">Ronda Completa!</h3>
+          <p class="text-sm text-slate-400 mb-6">{{ direction === 'cn2pt' ? 'CN→PT' : 'PT→CN' }} · {{ activeLevel?.id }} · {{ answeredCount }} palavras</p>
+
+          <div class="relative w-28 h-28 mx-auto mb-6">
+            <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+              <circle cx="50" cy="50" r="42" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="6"/>
+              <circle cx="50" cy="50" r="42" fill="none"
+                :stroke="resultsColor" stroke-width="6" stroke-linecap="round"
+                :stroke-dasharray="264" :stroke-dashoffset="264 - (results.percent/100)*264"
+                class="transition-all duration-1000 ease-out" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center">
+              <span class="text-3xl font-bold" :style="{ color: resultsColor }">{{ results.percent }}%</span>
             </div>
+          </div>
 
-            <div class="px-5 py-3 overflow-y-auto" style="max-height:calc(85vh - 40px)">
-              <h3 class="text-lg font-bold text-[#1a1a2e] mb-1">Importar CSV</h3>
-              <p class="text-xs text-[#8a8a9e] mb-4">
-                Formato: <code class="bg-white/60 px-1 rounded text-[#1a7bb5]">chinês,português,pos</code> (uma palavra por linha)
-              </p>
-
-              <!-- Drag & Drop Zone -->
-              <div @click="$refs.fileInputRef?.click()"
-                @dragover.prevent="dragOver = true"
-                @dragleave="dragOver = false"
-                @drop.prevent="handleDrop"
-                class="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-150 mb-4"
-                :class="dragOver ? 'border-[#1a7bb5] bg-[#1a7bb5]/8' : 'border-gray-200 bg-white/40'">
-                <i data-lucide="upload" class="w-10 h-10 mx-auto mb-2 transition-colors duration-150" :class="dragOver ? 'text-[#1a7bb5]' : 'text-gray-300'"></i>
-                <p class="text-sm text-[#4a4a5e]">
-                  Arraste o ficheiro CSV aqui ou
-                  <span class="text-[#1a7bb5] font-medium">clique para seleccionar</span>
-                </p>
-                <input ref="fileInputRef" type="file" accept=".csv,.txt" @change="handleFileSelect" class="hidden" />
+          <div class="glass-strong rounded-2xl p-4 mb-6">
+            <div class="flex justify-around">
+              <div class="text-center">
+                <div class="text-2xl font-bold text-certo">{{ results.correct }}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Correctas</div>
               </div>
-
-              <!-- Parsed Preview -->
-              <div v-if="parsedCSV.length > 0" class="mb-4">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="text-sm font-medium text-[#1a1a2e]">
-                    {{ parsedCSV.length }} palavra{{ parsedCSV.length !== 1 ? 's' : '' }} detectada{{ parsedCSV.length !== 1 ? 's' : '' }}
-                  </span>
-                  <button @click="confirmUpload" class="btn-primary px-4 py-2 text-sm font-semibold flex items-center gap-1.5" style="min-height:40px">
-                    <i data-lucide="check" class="w-4 h-4"></i> Confirmar
-                  </button>
-                </div>
-                <div class="glass-card p-2 max-h-40 overflow-y-auto">
-                  <div v-for="(item, i) in parsedCSV.slice(0, 30)" :key="i"
-                    class="text-xs py-0.5 px-1 border-b border-gray-50 last:border-b-0 text-[#4a4a5e]">
-                    <span class="font-medium">{{ item.zh }}</span> → <span>{{ item.pt }}</span>
-                    <span v-if="item.pos" class="text-[#8a8a9e]">({{ item.pos }})</span>
-                  </div>
-                  <div v-if="parsedCSV.length > 30" class="text-xs text-[#8a8a9e] pt-1 px-1">
-                    …e mais {{ parsedCSV.length - 30 }} palavra{{ parsedCSV.length - 30 !== 1 ? 's' : '' }}
-                  </div>
-                </div>
-              </div>
-
-              <!-- Close -->
-              <div class="flex gap-3">
-                <button @click="showUpload = false; parsedCSV = []" class="btn-glass flex-1 py-3 text-sm font-semibold" style="min-height:48px">
-                  Cancelar
-                </button>
+              <div class="w-px bg-slate-200"></div>
+              <div class="text-center">
+                <div class="text-2xl font-bold text-erro">{{ results.wrong }}</div>
+                <div class="text-xs text-slate-400 mt-0.5">Erradas</div>
               </div>
             </div>
           </div>
+
+          <div v-if="results.wrongWords.length > 0" class="glass rounded-2xl p-3 mb-6 w-full max-h-40 overflow-y-auto">
+            <p class="text-xs font-medium text-erro/70 mb-2 flex items-center gap-1">
+              <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+              Palavras para revisar ({{ results.wrongWords.length }})
+            </p>
+            <div v-for="(w, i) in results.wrongWords" :key="i"
+              class="flex justify-between items-center py-1.5 px-1 border-b border-slate-100 last:border-b-0">
+              <span class="text-sm text-slate-700 font-medium">{{ direction === 'cn2pt' ? w.zh : w.pt }}</span>
+              <span class="text-xs text-slate-400">→ {{ direction === 'cn2pt' ? w.pt : w.zh }}</span>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-center gap-1.5 mb-4">
+            <span :class="['w-2 h-2 rounded-full', syncDone ? 'bg-certo' : 'bg-amber-400 anim-pulse-soft']"></span>
+            <span class="text-xs text-slate-400">{{ syncDone ? 'Sincronizado!' : 'A sincronizar…' }}</span>
+          </div>
+
+          <div class="flex gap-3 w-full">
+            <button @click="startPractice(activeLevel)"
+              class="btn-primary flex-1 py-3.5 text-sm font-semibold flex items-center justify-center gap-1.5"
+              style="min-height:50px;border-radius:16px">
+              <i data-lucide="rotate-cw" class="w-4 h-4"></i> Nova Ronda
+            </button>
+            <button @click="mode = 'dir'"
+              class="btn-glass flex-1 py-3.5 text-sm font-semibold"
+              style="min-height:50px;border-radius:16px">
+              Voltar
+            </button>
+          </div>
         </div>
-      </Teleport>
+      </div>
     </div>
   `,
-  emits: [],
+
   data() {
     return {
-      selectedLevel: 'A1',
-      direction: 'cn2pt',
-      selectedCount: 10,
-      cefrLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
-      countOptions: [
-        { value: 10, label: '10' },
-        { value: 20, label: '20' },
-        { value: 30, label: '30' },
-        { value: Infinity, label: '∞' },
+      mode: 'dir',          // 'dir' | 'grid' | 'practice' | 'results'
+      direction: null,      // null until user picks
+      selectedDirTemp: null, // for visual highlight during direction pick
+      cefrLevels: [
+        { id: 'A1', label: 'Iniciação',   color: '#2d6a4f' },
+        { id: 'A2', label: 'Elementar',    color: '#1a7bb5' },
+        { id: 'B1', label: 'Limiar',       color: '#d4a843' },
+        { id: 'B2', label: 'Vantagem',     color: '#c07a2a' },
+        { id: 'C1', label: 'Autonomia',    color: '#8b2252' },
+        { id: 'C2', label: 'Mestria',      color: '#6b21a8' },
       ],
-      // Practice state
-      practiceActive: false,
-      currentIndex: 0,
-      roundWords: [],
+      activeLevel: null,
+      practiceWords: [],
+      wordIndex: 0,
       userAnswer: '',
-      feedbackState: null, // null | 'correct' | 'wrong'
-      feedbackHint: '',
+      feedbackState: null,
+      answeredCount: 0,
       correctInRound: 0,
+      wrongCount: 0,
       results: { correct: 0, wrong: 0, percent: 0, wrongWords: [] },
-      roundCompleted: false,
-      // Upload state
-      showUpload: false,
-      dragOver: false,
-      parsedCSV: [],
+      syncDone: false,
     }
   },
+
   computed: {
-    /** All vocab data from all sources */
-    allVocabData() {
-      const words = []
-      // 1. Global DICT_VOCAB_DATA (embedded vocab)
-      if (typeof DICT_VOCAB_DATA !== 'undefined' && Array.isArray(DICT_VOCAB_DATA)) {
-        for (const w of DICT_VOCAB_DATA) words.push(w)
-      }
-      // 2. Uploaded CSV data in localStorage
-      try {
-        const stored = localStorage.getItem('UPLOADED_VOCAB_DATA')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (Array.isArray(parsed)) {
-            for (const w of parsed) words.push(w)
-          }
-        }
-      } catch (_) { /* ignore parse errors */ }
-      return words
+    totalWords() { return this.allQecrWords.length },
+    currentWord() { return this.practiceWords[this.wordIndex] || null },
+    progressPercent() {
+      if (this.practiceWords.length === 0) return 0
+      return Math.min(100, Math.round((this.wordIndex / Math.max(this.practiceWords.length - 1, 1)) * 100))
     },
-    /** Words filtered by selected CEFR level */
-    filteredWords() {
-      const words = this.allVocabData
-      if (!this.selectedLevel) return words
-      const level = this.selectedLevel.toLowerCase()
-      const matched = words.filter(w => {
-        if (!w.cefr) return false
-        return String(w.cefr).toLowerCase() === level
-      })
-      return matched.length > 0 ? matched : words
-    },
-    hasWords() {
-      return this.filteredWords.length > 0
-    },
-    currentWord() {
-      return this.roundWords[this.currentIndex] || null
+    progressColor() {
+      const p = this.correctInRound / Math.max(this.answeredCount, 1)
+      if (p >= 0.7) return '#2d6a4f'
+      if (p >= 0.4) return '#d4a843'
+      return '#c1121f'
     },
     resultsEmoji() {
       const p = this.results.percent
       if (p >= 90) return '🏆'
       if (p >= 70) return '🎉'
       if (p >= 50) return '👍'
-      if (p >= 30) return '💪'
-      return '📚'
+      return '💪'
     },
     resultsColor() {
       const p = this.results.percent
-      if (p >= 70) return 'text-[#2d6a4f]'
-      if (p >= 50) return 'text-[#d4a843]'
-      return 'text-[#c1121f]'
+      if (p >= 70) return '#2d6a4f'
+      if (p >= 50) return '#d4a843'
+      return '#c1121f'
+    },
+    allQecrWords() {
+      if (typeof UPLOADED_QECR_DATA !== 'undefined' && Array.isArray(UPLOADED_QECR_DATA)) {
+        return UPLOADED_QECR_DATA
+      }
+      if (typeof DICT_VOCAB_DATA !== 'undefined' && Array.isArray(DICT_VOCAB_DATA)) {
+        return DICT_VOCAB_DATA.map(w => ({ ...w, lv: '' }))
+      }
+      return []
     },
   },
+
   methods: {
-    toggleDirection() {
-      this.direction = this.direction === 'cn2pt' ? 'pt2cn' : 'cn2pt'
+    pickDirection(dir) {
+      this.selectedDirTemp = dir
+      // Brief delay for visual feedback, then transition
+      setTimeout(() => {
+        this.direction = dir
+        this.mode = 'grid'
+      }, 120)
     },
 
-    /** Start a new practice round */
-    startRound() {
-      if (!this.hasWords) return
-      const shuffled = [...this.filteredWords].sort(() => Math.random() - 0.5)
-      this.roundWords = this.selectedCount === Infinity
-        ? shuffled
-        : shuffled.slice(0, Math.min(this.selectedCount, shuffled.length))
-      this.currentIndex = 0
+    getLevelWords(lvlId) { return this.allQecrWords.filter(w => w.lv && w.lv.toUpperCase() === lvlId.toUpperCase()) },
+
+    startPractice(lvl) {
+      const words = this.getLevelWords(lvl.id)
+      if (words.length === 0) return
+      this.activeLevel = lvl
+      this.practiceWords = [...words].sort(() => Math.random() - 0.5)
+      this.wordIndex = 0
+      this.answeredCount = 0
       this.correctInRound = 0
+      this.wrongCount = 0
       this.results = { correct: 0, wrong: 0, percent: 0, wrongWords: [] }
-      this.roundCompleted = false
       this.feedbackState = null
       this.userAnswer = ''
-      this.practiceActive = true
-      this.$nextTick(() => this.focusInput())
+      this.syncDone = false
+      this.mode = 'practice'
+      this.$nextTick(() => { setTimeout(() => { const el = this.$refs.answerInput; if (el) el.focus() }, 150) })
     },
 
-    focusInput() {
-      const el = this.$refs.answerInput
-      if (el && typeof el.focus === 'function') {
-        setTimeout(() => el.focus(), 100)
-      }
-    },
-
-    /** Check the user's answer */
     checkAnswer() {
       if (!this.currentWord || this.feedbackState) return
       const userAns = this.userAnswer.trim()
       if (!userAns) return
-
-      const correctAnswer = this.direction === 'cn2pt'
-        ? this.currentWord.pt
-        : this.currentWord.zh
-
+      const correctAnswer = this.direction === 'cn2pt' ? this.currentWord.pt : this.currentWord.zh
       let matchResult
       if (typeof Diacritics !== 'undefined' && typeof Diacritics.compare === 'function') {
         matchResult = Diacritics.compare(userAns, correctAnswer)
       } else {
-        matchResult = {
-          match: userAns.toLowerCase().trim() === correctAnswer.toLowerCase().trim() ? 'strict' : 'none',
-          hint: '',
-        }
+        matchResult = { match: userAns.toLowerCase().trim() === correctAnswer.toLowerCase().trim() ? 'strict' : 'none', hint: '' }
       }
-
       const directionKey = this.direction === 'cn2pt' ? 'zh2pt' : 'pt2zh'
-
+      this.answeredCount++
       if (matchResult.match === 'strict' || matchResult.match === 'loose') {
         this.feedbackState = 'correct'
-        this.feedbackHint = matchResult.hint || ''
         this.correctInRound++
         this.results.correct++
         PTStore.addToMyVocab(this.currentWord.pt, this.currentWord.zh, this.currentWord.pos || '', directionKey)
         PTStore.logWordPractice(this.currentWord.pt, directionKey)
         if (matchResult.match === 'loose') {
+          this.wrongCount++
           PTStore.logWrongWord(this.currentWord.pt, this.currentWord.zh, this.currentWord.pos || '', directionKey)
         } else {
           PTStore.correctReview(this.currentWord.pt, directionKey)
         }
       } else {
         this.feedbackState = 'wrong'
-        this.feedbackHint = ''
+        this.wrongCount++
         this.results.wrong++
         this.results.wrongWords.push({ ...this.currentWord })
         PTStore.logWrongWord(this.currentWord.pt, this.currentWord.zh, this.currentWord.pos || '', directionKey)
@@ -462,92 +388,41 @@ var VocabView = {
       }
     },
 
-    /** Move to next word or complete round */
     nextWord() {
-      if (this.currentIndex < this.roundWords.length - 1) {
-        this.currentIndex++
-        this.feedbackState = null
-        this.userAnswer = ''
-        this.feedbackHint = ''
-        this.$nextTick(() => this.focusInput())
-      } else {
-        this.results.percent = this.roundWords.length > 0
-          ? Math.round((this.results.correct / this.roundWords.length) * 100)
-          : 0
-        this.roundCompleted = true
-      }
-    },
-
-    cancelPractice() {
-      this.practiceActive = false
-      this.roundCompleted = false
+      this.wordIndex++
       this.feedbackState = null
       this.userAnswer = ''
-      this.roundWords = []
+      if (this.wordIndex >= this.practiceWords.length) {
+        this.practiceWords = [...this.practiceWords].sort(() => Math.random() - 0.5)
+        this.wordIndex = 0
+      }
+      this.$nextTick(() => { setTimeout(() => { const el = this.$refs.answerInput; if (el) el.focus() }, 100) })
     },
 
-    // ─── CSV Upload ───
-    handleDrop(e) {
-      this.dragOver = false
-      const file = e.dataTransfer.files[0]
-      if (file) this.parseCSVFile(file)
-    },
-    handleFileSelect(e) {
-      const file = e.target.files[0]
-      if (file) this.parseCSVFile(file)
-    },
-    parseCSVFile(file) {
-      const reader = new FileReader()
-      reader.onload = (evt) => {
-        const text = evt.target.result
-        const lines = text.split('\n').filter(l => l.trim())
-        const items = []
-        for (let line of lines) {
-          line = line.trim()
-          if (/^(chin[eê]s|zh|chinese|pt|portugu[eê]s)/i.test(line) && !line.includes(',')) continue
-          const parts = line.split(',')
-          if (parts.length >= 2) {
-            const zh = parts[0].trim().replace(/^["']|["']$/g, '')
-            const pt = parts[1].trim().replace(/^["']|["']$/g, '')
-            const pos = parts[2] ? parts[2].trim().replace(/^["']|["']$/g, '') : ''
-            if (zh && pt) {
-              items.push({ zh, pt, pos, cefr: this.selectedLevel, source: 'uploaded' })
-            }
-          }
-        }
-        this.parsedCSV = items
-      }
-      reader.readAsText(file)
-    },
-    confirmUpload() {
-      let existing = []
+    async endPractice() {
+      if (this.answeredCount === 0) { this.mode = 'dir'; return }
+      this.mode = 'results'
+      this.results.percent = Math.round((this.results.correct / this.answeredCount) * 100)
+      this.syncDone = false
       try {
-        const stored = localStorage.getItem('UPLOADED_VOCAB_DATA')
-        if (stored) existing = JSON.parse(stored)
-      } catch (_) {}
-      const existingKeys = new Set(existing.map(w => w.zh + '|' + w.pt))
-      for (const item of this.parsedCSV) {
-        const key = item.zh + '|' + item.pt
-        if (!existingKeys.has(key)) {
-          existing.push(item)
-          existingKeys.add(key)
+        if (typeof SyncManager !== 'undefined' && SyncManager.isLoggedIn && SyncManager.isLoggedIn()) {
+          await SyncManager.sync()
         }
+        this.syncDone = true
+      } catch (e) {
+        console.warn('[VocabView] Sync failed:', e.message)
+        this.syncDone = true
       }
-      localStorage.setItem('UPLOADED_VOCAB_DATA', JSON.stringify(existing))
-      this.parsedCSV = []
-      this.showUpload = false
     },
   },
+
   mounted() {
-    this.$nextTick(() => {
-      if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons()
-      }
-    })
+    for (const lvl of this.cefrLevels) { lvl.count = this.getLevelWords(lvl.id).length }
+    this.$nextTick(() => { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons() })
   },
   updated() {
-    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-      lucide.createIcons()
-    }
+    this.$nextTick(() => { if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons() })
   },
 }
+
+if (typeof window !== 'undefined') window.VocabView = VocabView

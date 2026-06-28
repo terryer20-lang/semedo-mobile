@@ -1,11 +1,12 @@
-const CACHE = 'semedo-mobile-v1'
+const CACHE = 'semedo-vocab-v1'
 const ASSETS = [
   'index.html', 'manifest.json',
   'app.js', 'store/storage.js',
+  'data/uploaded_qecr_data.js',
   'utils/diacritics.js', 'utils/sync.js', 'utils/animation.js',
   'components/AppShell.js', 'components/ConfigModal.js',
   'components/VocabView.js', 'components/MeuLexicoView.js',
-  'components/ErrosView.js', 'components/StudyStats.js',
+  'components/StudyStats.js',
 ]
 
 self.addEventListener('install', e => {
