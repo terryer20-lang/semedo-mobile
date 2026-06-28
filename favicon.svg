@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1a7bb5"/>
+      <stop offset="100%" stop-color="#15628f"/>
+    </linearGradient>
+  </defs>
+  <!-- Background rounded rect -->
+  <rect x="20" y="20" width="472" height="472" rx="80" fill="url(#bg)"/>
+  <!-- Inner gold border -->
+  <rect x="36" y="36" width="440" height="440" rx="60" fill="none" stroke="#d4a843" stroke-width="3"/>
+  <!-- C letter -->
+  <circle cx="256" cy="256" r="120" fill="white"/>
+  <circle cx="256" cy="256" r="88" fill="#1a7bb5"/>
+  <rect x="270" y="0" width="242" height="512" fill="#1a7bb5"/>
+  <!-- Bottom-left diamond -->
+  <polygon points="72,356 100,342 128,356 100,370" fill="#d4a843"/>
+  <!-- Top-right diamond -->
+  <polygon points="384,156 412,142 440,156 412,170" fill="#d4a843"/>
+</svg>

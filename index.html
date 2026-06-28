@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Semedo Móvel</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+  <link rel="apple-touch-icon" href="icon-512.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Semedo">
+  <meta name="theme-color" content="#1a7bb5">
+  <meta name="mobile-web-app-capable" content="yes">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>tailwind.config={theme:{extend:{colors:{azulejo:'#1a7bb5',porto:'#8b2252',lisboa:'#d4a843',certo:'#2d6a4f',erro:'#c1121f',gelo:'#f5f0ea'}}}}</script>
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+  <style>
+    * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+    :root {
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+    body {
+      background:
+        radial-gradient(ellipse 80% 60% at 10% 85%, rgba(212,168,67,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 90% 20%, rgba(26,123,181,0.08) 0%, transparent 60%),
+        linear-gradient(165deg, #e8ddce 0%, #d6dbe3 40%, #cdd6e0 100%);
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: system-ui, -apple-system, sans-serif;
+      overscroll-behavior: none;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Safe area */
+    .pb-safe { padding-bottom: var(--safe-bottom); }
+
+    /* Glass system — mobile optimized (less blur for perf) */
+    .glass-card {
+      background: rgba(255,255,255,0.72);
+      -webkit-backdrop-filter: blur(16px) saturate(1.1);
+      backdrop-filter: blur(16px) saturate(1.1);
+      border: 0.5px solid rgba(255,255,255,0.7);
+      border-radius: 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+    }
+    @supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+      .glass-card { background: rgba(255,255,255,0.85); }
+    }
+    .glass-card-strong {
+      background: rgba(255,255,255,0.78);
+      -webkit-backdrop-filter: blur(20px) saturate(1.15);
+      backdrop-filter: blur(20px) saturate(1.15);
+      border: 0.5px solid rgba(255,255,255,0.8);
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06), 0 2px 4px rgba(0,0,0,0.03);
+    }
+
+    /* Bottom nav */
+    .nav-glass {
+      background: rgba(255,255,255,0.78);
+      -webkit-backdrop-filter: blur(24px) saturate(1.2);
+      backdrop-filter: blur(24px) saturate(1.2);
+      border-top: 0.5px solid rgba(255,255,255,0.6);
+    }
+
+    /* Inputs */
+    .glass-input {
+      background: rgba(255,255,255,0.5);
+      -webkit-backdrop-filter: blur(6px);
+      backdrop-filter: blur(6px);
+      border: 0.5px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+      transition: all 0.15s ease;
+    }
+    .glass-input:focus {
+      border-color: rgba(26,123,181,0.3);
+      box-shadow: 0 0 0 3px rgba(26,123,181,0.08);
+      background: rgba(255,255,255,0.65);
+      outline: none;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: #1a7bb5;
+      color: #fff;
+      border-radius: 12px;
+      transition: all 0.15s ease;
+    }
+    .btn-primary:active { transform: scale(0.96); background: #15628f; }
+    .btn-primary:disabled { opacity: 0.4; }
+
+    .btn-glass {
+      background: transparent;
+      border: 0.5px solid rgba(0,0,0,0.06);
+      border-radius: 12px;
+      transition: all 0.15s ease;
+    }
+    .btn-glass:active { background: rgba(0,0,0,0.04); }
+
+    /* Active nav tab */
+    .nav-active {
+      color: #1a7bb5;
+    }
+    .nav-active i { color: #1a7bb5; }
+    .nav-indicator {
+      width: 20px;
+      height: 3px;
+      background: #1a7bb5;
+      border-radius: 2px;
+      margin: 2px auto 0;
+      transition: all 0.2s ease;
+    }
+
+    /* View transitions */
+    .view-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+    .view-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+    .view-enter-from { opacity: 0; transform: translateY(8px); }
+    .view-leave-to { opacity: 0; transform: translateY(-4px); }
+
+    /* Fade */
+    .fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
+    .fade-enter-from, .fade-leave-to { opacity: 0; }
+
+    /* Slide-up for items */
+    .slide-up-enter-active { transition: all 0.25s ease; }
+    .slide-up-enter-from { opacity: 0; transform: translateY(10px); }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+    }
+
+    /* Animations */
+    @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pop { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+    @keyframes pulse-soft { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .anim-fade-up { animation: fade-up 0.3s ease both; }
+    .anim-pop { animation: pop 0.25s ease; }
+    .anim-pulse { animation: pulse-soft 1.5s ease-in-out infinite; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script src="store/storage.js"></script>
+  <script src="utils/diacritics.js"></script>
+  <script src="utils/sync.js"></script>
+  <script src="utils/animation.js"></script>
+  <script src="components/AppShell.js"></script>
+  <script src="components/ConfigModal.js"></script>
+  <script src="components/VocabView.js"></script>
+  <script src="components/MeuLexicoView.js"></script>
+  <script src="components/ErrosView.js"></script>
+  <script src="components/StudyStats.js"></script>
+  <script src="app.js"></script>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch(e => console.warn('[SW]', e))
+      })
+    }
+  </script>
+</body>
+</html>
