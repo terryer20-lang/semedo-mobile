@@ -26,7 +26,9 @@
   // ─── Register globally-defined IIFE components ───
   // These are defined as `const XxxView = { ... }` in separate script tags
   // and assigned to `window` in each file for cross-file accessibility.
-  const GLOBAL_COMPONENTS = ['ConfigModal', 'VocabView', 'MeuLexicoView', 'ErrosView']
+  const GLOBAL_COMPONENTS = [
+    'ConfigModal', 'VocabView', 'MeuLexicoView', 'ErrosView', 'StudyStats',
+  ]
 
   GLOBAL_COMPONENTS.forEach(function (name) {
     if (typeof window[name] !== 'undefined' && window[name] !== null) {

@@ -1,295 +1,553 @@
 /**
- * components/VocabView.js — 背單詞核心視圖（手機版）
+ * components/VocabView.js — Vocabulário (Main Practice View)
+ * Mobile-optimized: CEFR level selector, practice rounds, flashcard interaction, CSV upload
+ *
+ * IIFE global Vue component object. Uses Vue 3 Options API.
+ * Dependencies: PTStore (store/storage.js), Diacritics (utils/diacritics.js),
+ *   DICT_VOCAB_DATA (data/dict_vocab_data.js, global), localStorage 'UPLOADED_VOCAB_DATA'
  */
 const VocabView = {
+  name: 'VocabView',
   template: `
-    <div class="anim-fade-up pb-4">
+    <div class="vocab-view px-4 pt-2 pb-24 min-h-screen">
+      <!-- Header -->
+      <div class="flex items-center justify-between mb-4 anim-enter">
+        <h2 class="text-lg font-semibold text-[#1a1a2e]">Vocabulário</h2>
+        <button @click="showUpload = true" class="btn-glass flex items-center gap-1.5 px-3 py-2 text-sm font-medium" style="min-height:44px">
+          <i data-lucide="upload" class="w-4 h-4"></i>
+          <span>CSV</span>
+        </button>
+      </div>
 
-      <!-- ═══ IDLE ═══ -->
-      <template v-if="!flowActive && !roundComplete">
-
-        <!-- CEFR Level Selector -->
-        <div class="glass-card p-3.5 mb-3">
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-medium text-slate-500">Nível</label>
-            <div class="flex glass-panel rounded-lg p-0.5">
-              <button @click="mode='zh2pt'" :class="mode==='zh2pt'?'glass-card text-azulejo shadow-sm':'text-slate-400'"
-                      class="px-2.5 py-1 text-[10px] font-medium rounded-md transition">CN→PT</button>
-              <button @click="mode='pt2zh'" :class="mode==='pt2zh'?'glass-card text-azulejo shadow-sm':'text-slate-400'"
-                      class="px-2.5 py-1 text-[10px] font-medium rounded-md transition">PT→CN</button>
-            </div>
-          </div>
-          <div class="flex gap-1.5 overflow-x-auto pb-1 -mx-0.5 px-0.5" style="-webkit-overflow-scrolling:touch">
-            <button v-for="lv in levels" :key="lv.id" @click="selectedLevel=lv.id"
-                    :class="['shrink-0 px-3 py-2 rounded-lg text-xs font-medium transition border',
-                      selectedLevel===lv.id
-                        ? lv.id==='A1'?'bg-emerald-50 border-emerald-400 text-emerald-700'
-                          :lv.id==='A2'?'bg-teal-50 border-teal-400 text-teal-700'
-                          :lv.id==='B1'?'bg-sky-50 border-sky-400 text-sky-700'
-                          :lv.id==='B2'?'bg-indigo-50 border-indigo-400 text-indigo-700'
-                          :lv.id==='C1'?'bg-violet-50 border-violet-400 text-violet-700'
-                          :lv.id==='C2'?'bg-rose-50 border-rose-400 text-rose-700'
-                          : 'bg-amber-50 border-amber-400 text-amber-700'
-                        : 'btn-glass text-slate-500'
-                    ]">
-              <span class="font-bold">{{ lv.id }}</span>
-              <span class="text-[9px] opacity-70 ml-0.5">({{ lv.count }}/{{ lv.total }})</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- Start -->
-        <div v-if="selectedLevel" class="glass-card-strong p-5 text-center">
-          <i data-lucide="book-open" class="w-8 h-8 mx-auto text-slate-200 mb-2"></i>
-          <p class="text-sm text-slate-600 font-medium mb-1">{{ poolSize > 0 ? 'Pronto para praticar' : 'Sem palavras' }}</p>
-          <p v-if="poolSize > 0" class="text-xs text-slate-400 mb-3">{{ poolSize }} palavras disponíveis</p>
-
-          <!-- Round size -->
-          <div class="flex justify-center gap-1.5 mb-3">
-            <button v-for="n in [10,20,30]" :key="n" @click="roundSize=n"
-                    :class="['px-3 py-1.5 rounded text-xs font-medium transition border',
-                      roundSize===n ? 'btn-primary' : 'btn-glass text-slate-500']">{{ n }}</button>
-            <button @click="roundSize=-1"
-                    :class="['px-3 py-1.5 rounded text-xs font-medium transition border',
-                      roundSize===-1 ? 'bg-rose-500 text-white' : 'btn-glass text-slate-500']">∞</button>
-          </div>
-
-          <button v-if="poolSize>0" @click="startRound"
-                  class="w-full py-3 btn-primary text-sm font-medium flex items-center justify-center gap-1.5">
-            <i data-lucide="play" class="w-4 h-4"></i>Iniciar Ronda
+      <!-- CEFR Level Selector — Horizontal Scroll -->
+      <div class="mb-3 anim-enter" style="animation-delay:0.03s">
+        <label class="text-xs font-medium text-[#4a4a5e] mb-1.5 block">Nível CEFR</label>
+        <div class="flex gap-2 overflow-x-auto pb-1 no-scrollbar scrollable-x">
+          <button v-for="lvl in cefrLevels" :key="lvl"
+            @click="selectedLevel = lvl"
+            class="flex-shrink-0 px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-150"
+            :class="selectedLevel === lvl ? 'bg-[#1a7bb5] text-white shadow-md' : 'bg-white/60 text-[#4a4a5e] border border-white/40'"
+            style="min-height:44px;min-width:52px">
+            {{ lvl }}
           </button>
         </div>
+      </div>
 
-        <!-- Upload CSV -->
-        <div class="mt-3">
-          <button @click="showUpload=true"
-                  class="w-full py-2.5 btn-glass text-xs text-slate-500 font-medium flex items-center justify-center gap-1.5">
-            <i data-lucide="upload" class="w-3.5 h-3.5"></i>Upload CSV
+      <!-- Direction Toggle -->
+      <div class="glass-card p-3 mb-3 anim-enter" style="animation-delay:0.06s">
+        <div class="flex items-center justify-center gap-4">
+          <span class="text-sm font-medium transition-colors duration-200" :class="direction === 'cn2pt' ? 'text-[#1a7bb5] font-semibold' : 'text-[#4a4a5e]'">CN → PT</span>
+          <button @click="toggleDirection" class="relative w-14 h-8 rounded-full transition-colors duration-200 focus:outline-none"
+            :class="direction === 'pt2cn' ? 'bg-[#1a7bb5]' : 'bg-gray-300'" style="min-height:44px;min-width:56px"
+            role="switch" :aria-checked="direction === 'pt2cn'">
+            <span class="absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform duration-200"
+              :class="direction === 'pt2cn' ? 'translate-x-6' : ''"></span>
+          </button>
+          <span class="text-sm font-medium transition-colors duration-200" :class="direction === 'pt2cn' ? 'text-[#1a7bb5] font-semibold' : 'text-[#4a4a5e]'">PT → CN</span>
+        </div>
+      </div>
+
+      <!-- Practice Round Setup -->
+      <div class="glass-card-strong p-4 mb-4 anim-enter" style="animation-delay:0.09s">
+        <label class="text-xs font-medium text-[#4a4a5e] mb-2 block">Quantidade</label>
+        <div class="flex gap-2 mb-3">
+          <button v-for="opt in countOptions" :key="opt.value"
+            @click="selectedCount = opt.value"
+            class="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-150"
+            :class="selectedCount === opt.value ? 'bg-[#1a7bb5] text-white shadow-md' : 'bg-white/60 text-[#4a4a5e] border border-white/40'"
+            style="min-height:44px">
+            {{ opt.label }}
           </button>
         </div>
-      </template>
+        <button @click="startRound" :disabled="!hasWords"
+          class="btn-primary w-full py-3 text-base font-semibold flex items-center justify-center gap-2"
+          style="min-height:50px">
+          <i data-lucide="play" class="w-5 h-5"></i>
+          Iniciar Ronda
+        </button>
+        <p v-if="!hasWords" class="text-xs text-center text-[#8a8a9e] mt-2">
+          Nenhuma palavra disponível para este nível
+        </p>
+      </div>
 
-      <!-- ═══ PRACTICE FLOW ═══ -->
-      <template v-if="flowActive">
-        <div class="glass-card-strong p-5 text-center anim-fade-up">
-          <p class="text-xs text-slate-400 mb-3">{{ currentIdx+1 }} / {{ roundWords.length }}</p>
-
-          <!-- Word display -->
-          <div v-if="currentWord" class="mb-4">
-            <p v-if="mode==='pt2zh'" class="text-xl font-bold text-slate-800">{{ currentWord.pt }}</p>
-            <p v-else class="text-xl font-bold text-slate-800">{{ currentWord.zh }}</p>
-            <p class="text-xs text-slate-400 mt-1" v-if="mode==='pt2zh'">{{ currentWord.pos }}</p>
-          </div>
-
-          <!-- Input -->
-          <input type="text" v-model="userInput" ref="inputRef"
-                 :placeholder="mode==='pt2zh'?'Tradução em chinês…':'Tradução em português…'"
-                 class="w-full px-3 py-2.5 glass-input text-sm text-center mb-3"
-                 @keydown.enter="checkAnswer"
-                 :disabled="!!feedback">
-
-          <!-- Feedback -->
-          <div v-if="feedback" class="mb-3 anim-pop">
-            <p :class="feedback.correct ? 'text-certo font-medium text-sm' : 'text-erro font-medium text-sm'">
-              {{ feedback.correct ? '✓ Correto!' : '✗ ' + (mode==='pt2zh' ? currentWord.zh : currentWord.pt) }}
-            </p>
-          </div>
-
-          <div class="flex gap-2">
-            <button v-if="!feedback" @click="checkAnswer" class="flex-1 py-2.5 btn-primary text-sm font-medium">Verificar</button>
-            <button v-if="feedback" @click="nextWord" class="flex-1 py-2.5 btn-primary text-sm font-medium">
-              {{ currentIdx < roundWords.length-1 ? 'Seguinte →' : 'Ver resultados' }}
-            </button>
-          </div>
+      <!-- Stats Summary -->
+      <div class="glass-card p-3 mb-4 anim-enter" style="animation-delay:0.12s">
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-[#4a4a5e]">Palavras disponíveis:</span>
+          <span class="font-semibold text-[#1a1a2e]">{{ filteredWords.length }}</span>
         </div>
-      </template>
+        <div class="flex justify-between items-center text-sm mt-1.5">
+          <span class="text-[#4a4a5e]">No meu léxico:</span>
+          <span class="font-semibold text-[#1a1a2e]">{{ PTStore.getMyVocabCount() }}</span>
+        </div>
+      </div>
 
-      <!-- ═══ RESULTS ═══ -->
-      <template v-if="roundComplete">
-        <div class="glass-card-strong p-5 text-center anim-fade-up">
-          <i data-lucide="check-circle" class="w-10 h-10 mx-auto text-certo mb-2"></i>
-          <p class="text-base font-bold text-slate-800 mb-1">Ronda completa!</p>
-          <p class="text-sm text-slate-500 mb-3">{{ results.filter(r=>r.correct).length }}/{{ results.length }} acertos</p>
-          <div class="text-xs text-slate-400 space-y-1 mb-4 max-h-40 overflow-y-auto text-left">
-            <div v-for="(r,i) in results" :key="i"
-                 class="flex justify-between py-1 px-2 rounded" :class="r.correct?'bg-emerald-50':'bg-rose-50'">
-              <span>{{ r.pt }} <span class="text-slate-400">—</span> {{ r.zh }}</span>
-              <span :class="r.correct?'text-certo':'text-erro'">{{ r.correct ? '✓' : '✗' }}</span>
+      <!-- ─── PRACTICE POPUP (Bottom Sheet) ─── -->
+      <Teleport to="body">
+        <div v-if="practiceActive" class="fixed inset-0 z-50 flex flex-col justify-end" @click.self="cancelPractice">
+          <!-- Backdrop -->
+          <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="cancelPractice"></div>
+          <!-- Sheet -->
+          <div class="relative w-full max-w-lg mx-auto bg-white/95 backdrop-blur-xl rounded-t-2xl shadow-xl overflow-hidden animate-slide-up"
+            style="max-height:90vh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)">
+            
+            <!-- Drag Handle -->
+            <div class="flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing">
+              <div class="w-10 h-1 rounded-full bg-gray-300"></div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div v-if="!roundCompleted && roundWords.length > 0" class="px-5 pb-2">
+              <div class="flex justify-between items-center text-xs text-[#4a4a5e] mb-1">
+                <span class="font-medium">{{ currentIndex + 1 }} / {{ roundWords.length }}</span>
+                <span class="text-[#2d6a4f]">{{ correctInRound }} ✅</span>
+              </div>
+              <div class="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div class="h-full bg-[#1a7bb5] rounded-full transition-all duration-300 ease-out"
+                  :style="{ width: roundWords.length > 0 ? ((currentIndex + 1) / roundWords.length * 100) + '%' : '0%' }"></div>
+              </div>
+            </div>
+
+            <!-- Scrollable Content -->
+            <div class="px-5 py-4 overflow-y-auto" style="max-height:calc(90vh - 160px)">
+              <!-- ═══ ROUND COMPLETED ═══ -->
+              <div v-if="roundCompleted" class="text-center py-2">
+                <div class="text-5xl mb-3 anim-pop">{{ resultsEmoji }}</div>
+                <h3 class="text-lg font-bold text-[#1a1a2e] mb-1">Ronda Completa!</h3>
+                <p class="text-xs text-[#8a8a9e] mb-4">{{ roundWords.length }} palavras praticadas</p>
+
+                <div class="glass-card-strong p-4 mb-4">
+                  <div class="grid grid-cols-2 gap-4 text-center">
+                    <div>
+                      <div class="text-3xl font-bold text-[#2d6a4f]">{{ results.correct }}</div>
+                      <div class="text-xs text-[#4a4a5e] mt-0.5">Correctas</div>
+                    </div>
+                    <div>
+                      <div class="text-3xl font-bold text-[#c1121f]">{{ results.wrong }}</div>
+                      <div class="text-xs text-[#4a4a5e] mt-0.5">Erradas</div>
+                    </div>
+                  </div>
+                  <div class="mt-3 pt-3 border-t border-gray-100">
+                    <div class="text-lg font-bold" :class="resultsColor">{{ results.percent }}%</div>
+                    <div class="text-xs text-[#4a4a5e]">Taxa de acerto</div>
+                  </div>
+                </div>
+
+                <!-- Wrong Words Review List -->
+                <div v-if="results.wrongWords.length > 0" class="mb-4 text-left">
+                  <h4 class="text-sm font-medium text-[#4a4a5e] mb-2 flex items-center gap-1">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-[#c1121f]"></i>
+                    Palavras para revisar ({{ results.wrongWords.length }})
+                  </h4>
+                  <div class="glass-card p-2 max-h-40 overflow-y-auto">
+                    <div v-for="(w, i) in results.wrongWords" :key="i"
+                      class="flex justify-between items-center py-1.5 px-2 border-b border-gray-50 last:border-b-0 text-sm">
+                      <span class="font-medium text-[#1a1a2e]">{{ direction === 'cn2pt' ? w.zh : w.pt }}</span>
+                      <span class="text-[#8a8a9e] text-xs">→ {{ direction === 'cn2pt' ? w.pt : w.zh }}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div v-else class="mb-4 glass-card bg-[#2d6a4f]/5 p-3 text-center">
+                  <div class="text-sm text-[#2d6a4f] font-medium">🌟 Todas as respostas correctas!</div>
+                </div>
+
+                <div class="flex gap-3">
+                  <button @click="startRound" class="btn-primary flex-1 py-3 text-sm font-semibold flex items-center justify-center gap-1.5" style="min-height:48px">
+                    <i data-lucide="rotate-cw" class="w-4 h-4"></i> Nova Ronda
+                  </button>
+                  <button @click="cancelPractice" class="btn-glass flex-1 py-3 text-sm font-semibold" style="min-height:48px">
+                    Fechar
+                  </button>
+                </div>
+              </div>
+
+              <!-- ═══ ACTIVE FLASHCARD ═══ -->
+              <div v-else-if="currentWord" class="flashcard-area">
+                <!-- Word Display -->
+                <div class="text-center mb-6">
+                  <div class="text-xs font-medium text-[#8a8a9e] mb-1 flex items-center justify-center gap-2">
+                    <span class="bg-white/60 px-2 py-0.5 rounded-full">{{ currentWord.cefr || '—' }}</span>
+                    <span class="bg-white/60 px-2 py-0.5 rounded-full">{{ currentWord.pos || '—' }}</span>
+                  </div>
+                  <div class="text-2xl font-bold text-[#1a1a2e] my-6 py-4 px-2 glass-card-strong inline-block min-w-[60%]">
+                    {{ direction === 'cn2pt' ? currentWord.zh : currentWord.pt }}
+                  </div>
+                  <div class="text-xs text-[#8a8a9e]">
+                    {{ direction === 'cn2pt' ? 'Chinês → Português' : 'Português → Chinês' }}
+                  </div>
+                </div>
+
+                <!-- Answer Input -->
+                <div class="mb-3">
+                  <input ref="answerInput"
+                    v-model="userAnswer"
+                    @keyup.enter="checkAnswer"
+                    :placeholder="direction === 'cn2pt' ? 'Escreva em português…' : 'Escreva em chinês…'"
+                    class="glass-input w-full px-4 py-3 text-base text-center transition-all duration-200"
+                    :class="{
+                      'border-[#2d6a4f]/50 ring-2 ring-[#2d6a4f]/20 bg-[#2d6a4f]/5': feedbackState === 'correct',
+                      'border-[#c1121f]/50 ring-2 ring-[#c1121f]/20 bg-[#c1121f]/5': feedbackState === 'wrong'
+                    }"
+                    style="min-height:50px;font-size:18px"
+                    :disabled="feedbackState !== null"
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+                </div>
+
+                <!-- Feedback Display -->
+                <div v-if="feedbackState" class="mb-4 transition-all duration-200">
+                  <div v-if="feedbackState === 'correct'" class="glass-card bg-[#2d6a4f]/10 border border-[#2d6a4f]/20 p-3.5 text-center rounded-xl">
+                    <div class="text-xl mb-1">✅ Correcto!</div>
+                    <div class="text-sm text-[#4a4a5e] font-medium">
+                      {{ direction === 'cn2pt' ? currentWord.zh + ' = ' + currentWord.pt : currentWord.pt + ' = ' + currentWord.zh }}
+                    </div>
+                    <div v-if="feedbackHint" class="text-xs text-[#d4a843] mt-1">{{ feedbackHint }}</div>
+                  </div>
+                  <div v-else class="glass-card bg-[#c1121f]/10 border border-[#c1121f]/20 p-3.5 text-center rounded-xl">
+                    <div class="text-xl mb-1">❌ Errado</div>
+                    <div class="text-sm text-[#4a4a5e]">
+                      Resposta correcta:
+                    </div>
+                    <div class="text-base font-bold text-[#1a1a2e] mt-0.5">
+                      <strong>{{ direction === 'cn2pt' ? currentWord.pt : currentWord.zh }}</strong>
+                    </div>
+                    <div v-if="feedbackHint" class="text-xs text-[#d4a843] mt-1">{{ feedbackHint }}</div>
+                  </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="flex gap-3">
+                  <button v-if="!feedbackState" @click="checkAnswer" class="btn-primary flex-1 py-3 text-base font-semibold flex items-center justify-center gap-1.5" style="min-height:50px">
+                    <i data-lucide="check" class="w-5 h-5"></i> Verificar
+                  </button>
+                  <button v-if="feedbackState" @click="nextWord" class="btn-primary flex-1 py-3 text-base font-semibold flex items-center justify-center gap-1.5" style="min-height:50px">
+                    <i data-lucide="arrow-right" class="w-5 h-5"></i> Seguinte
+                  </button>
+                  <button @click="cancelPractice" class="btn-glass w-14 flex items-center justify-center" style="min-height:50px;min-width:50px">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Fallback -->
+              <div v-else class="text-center py-8">
+                <p class="text-sm text-[#8a8a9e]">Nenhuma palavra carregada.</p>
+                <button @click="cancelPractice" class="btn-primary mt-3 px-6 py-2 text-sm">Fechar</button>
+              </div>
             </div>
           </div>
-          <button @click="resetRound" class="w-full py-2.5 btn-primary text-sm font-medium">Nova Ronda</button>
         </div>
-      </template>
+      </Teleport>
 
-      <!-- ═══ UPLOAD MODAL ═══ -->
-      <transition name="fade">
-        <div v-if="showUpload" class="fixed inset-0 z-50 flex items-end justify-center p-4"
-             style="background:rgba(0,0,0,0.15);backdrop-filter:blur(8px)"
-             @click.self="showUpload=false">
-          <div class="glass-card-strong w-full max-w-md p-5" @click.stop style="border-radius:16px">
-            <h3 class="text-base font-bold text-slate-800 mb-3">Upload CSV</h3>
-            <div @dragover.prevent="dragOver=true" @dragleave="dragOver=false" @drop.prevent="onDrop"
-                 @click="$refs.fileInput.click()"
-                 :class="['border-2 border-dashed rounded-xl p-5 text-center cursor-pointer transition mb-3',
-                   dragOver ? 'border-azulejo bg-azulejo/5' : 'border-slate-200']">
-              <input ref="fileInput" type="file" accept=".csv" @change="onFileChange" class="hidden">
-              <i data-lucide="file-text" class="w-6 h-6 mx-auto mb-1" :class="fileName?'text-azulejo':'text-slate-300'"></i>
-              <p class="text-xs text-slate-500">{{ fileName || 'Toque para escolher ficheiro' }}</p>
-              <p v-if="parsedCount>0" class="text-[10px] text-slate-400">{{ parsedCount }} palavras</p>
+      <!-- ─── UPLOAD CSV BOTTOM SHEET ─── -->
+      <Teleport to="body">
+        <div v-if="showUpload" class="fixed inset-0 z-50 flex flex-col justify-end" @click.self="showUpload = false">
+          <!-- Backdrop -->
+          <div class="absolute inset-0 bg-black/30 backdrop-blur-sm" @click="showUpload = false"></div>
+          <!-- Sheet -->
+          <div class="relative w-full max-w-lg mx-auto bg-white/95 backdrop-blur-xl rounded-t-2xl shadow-xl overflow-hidden"
+            style="max-height:85vh;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,0px)">
+            
+            <!-- Handle -->
+            <div class="flex justify-center pt-3 pb-1">
+              <div class="w-10 h-1 rounded-full bg-gray-300"></div>
             </div>
-            <div class="flex gap-2 mb-3">
-              <select v-model="uploadLevel" class="flex-1 px-3 py-2 glass-input text-xs">
-                <option value="">Nível</option>
-                <option v-for="lv in ['A1','A2','B1','B2','C1','C2']" :key="lv" :value="lv">{{ lv }}</option>
-              </select>
-              <input type="text" v-model="uploadLabel" class="flex-1 px-3 py-2 glass-input text-xs" placeholder="Coleção">
+
+            <div class="px-5 py-3 overflow-y-auto" style="max-height:calc(85vh - 40px)">
+              <h3 class="text-lg font-bold text-[#1a1a2e] mb-1">Importar CSV</h3>
+              <p class="text-xs text-[#8a8a9e] mb-4">
+                Formato: <code class="bg-white/60 px-1 rounded text-[#1a7bb5]">chinês,português,pos</code> (uma palavra por linha)
+              </p>
+
+              <!-- Drag & Drop Zone -->
+              <div @click="$refs.fileInputRef?.click()"
+                @dragover.prevent="dragOver = true"
+                @dragleave="dragOver = false"
+                @drop.prevent="handleDrop"
+                class="border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-150 mb-4"
+                :class="dragOver ? 'border-[#1a7bb5] bg-[#1a7bb5]/8' : 'border-gray-200 bg-white/40'">
+                <i data-lucide="upload" class="w-10 h-10 mx-auto mb-2 transition-colors duration-150" :class="dragOver ? 'text-[#1a7bb5]' : 'text-gray-300'"></i>
+                <p class="text-sm text-[#4a4a5e]">
+                  Arraste o ficheiro CSV aqui ou
+                  <span class="text-[#1a7bb5] font-medium">clique para seleccionar</span>
+                </p>
+                <input ref="fileInputRef" type="file" accept=".csv,.txt" @change="handleFileSelect" class="hidden" />
+              </div>
+
+              <!-- Parsed Preview -->
+              <div v-if="parsedCSV.length > 0" class="mb-4">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-sm font-medium text-[#1a1a2e]">
+                    {{ parsedCSV.length }} palavra{{ parsedCSV.length !== 1 ? 's' : '' }} detectada{{ parsedCSV.length !== 1 ? 's' : '' }}
+                  </span>
+                  <button @click="confirmUpload" class="btn-primary px-4 py-2 text-sm font-semibold flex items-center gap-1.5" style="min-height:40px">
+                    <i data-lucide="check" class="w-4 h-4"></i> Confirmar
+                  </button>
+                </div>
+                <div class="glass-card p-2 max-h-40 overflow-y-auto">
+                  <div v-for="(item, i) in parsedCSV.slice(0, 30)" :key="i"
+                    class="text-xs py-0.5 px-1 border-b border-gray-50 last:border-b-0 text-[#4a4a5e]">
+                    <span class="font-medium">{{ item.zh }}</span> → <span>{{ item.pt }}</span>
+                    <span v-if="item.pos" class="text-[#8a8a9e]">({{ item.pos }})</span>
+                  </div>
+                  <div v-if="parsedCSV.length > 30" class="text-xs text-[#8a8a9e] pt-1 px-1">
+                    …e mais {{ parsedCSV.length - 30 }} palavra{{ parsedCSV.length - 30 !== 1 ? 's' : '' }}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Close -->
+              <div class="flex gap-3">
+                <button @click="showUpload = false; parsedCSV = []" class="btn-glass flex-1 py-3 text-sm font-semibold" style="min-height:48px">
+                  Cancelar
+                </button>
+              </div>
             </div>
-            <button @click="confirmUpload" :disabled="parsedData.length===0"
-                    class="w-full py-2.5 btn-primary text-sm font-medium disabled:opacity-40">Confirmar</button>
           </div>
         </div>
-      </transition>
+      </Teleport>
     </div>
   `,
-
+  emits: [],
   data() {
     return {
-      mode: 'zh2pt',
-      selectedLevel: null,
-      roundSize: 10,
+      selectedLevel: 'A1',
+      direction: 'cn2pt',
+      selectedCount: 10,
+      cefrLevels: ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'],
+      countOptions: [
+        { value: 10, label: '10' },
+        { value: 20, label: '20' },
+        { value: 30, label: '30' },
+        { value: Infinity, label: '∞' },
+      ],
+      // Practice state
+      practiceActive: false,
+      currentIndex: 0,
       roundWords: [],
-      currentIdx: 0,
-      userInput: '',
-      feedback: null,
-      flowActive: false,
-      roundComplete: false,
-      results: [],
-      showUpload: false, dragOver: false,
-      fileName: '', parsedData: [], parsedCount: 0, parseError: '',
-      uploadLevel: '', uploadLabel: '',
-      dictEntries: [],
+      userAnswer: '',
+      feedbackState: null, // null | 'correct' | 'wrong'
+      feedbackHint: '',
+      correctInRound: 0,
+      results: { correct: 0, wrong: 0, percent: 0, wrongWords: [] },
+      roundCompleted: false,
+      // Upload state
+      showUpload: false,
+      dragOver: false,
+      parsedCSV: [],
     }
   },
   computed: {
-    levels() {
-      const counts = {}
-      for (const e of this.dictEntries) {
-        const lv = e.lv || '—'
-        counts[lv] = (counts[lv] || 0) + 1
+    /** All vocab data from all sources */
+    allVocabData() {
+      const words = []
+      // 1. Global DICT_VOCAB_DATA (embedded vocab)
+      if (typeof DICT_VOCAB_DATA !== 'undefined' && Array.isArray(DICT_VOCAB_DATA)) {
+        for (const w of DICT_VOCAB_DATA) words.push(w)
       }
-      const myPts = new Set(PTStore.getMyVocabForDirection(this.mode).map(v => v.pt.toLowerCase()))
-      const myCounts = {}
-      for (const e of this.dictEntries) {
-        const lv = e.lv || '—'
-        if (myPts.has(e.pt.toLowerCase())) myCounts[lv] = (myCounts[lv] || 0) + 1
-      }
-      return ['A1','A2','B1','B2','C1','C2'].map(id => ({
-        id, count: (counts[id]||0) - (myCounts[id]||0), total: counts[id]||0,
-      })).filter(l => l.total > 0)
+      // 2. Uploaded CSV data in localStorage
+      try {
+        const stored = localStorage.getItem('UPLOADED_VOCAB_DATA')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed)) {
+            for (const w of parsed) words.push(w)
+          }
+        }
+      } catch (_) { /* ignore parse errors */ }
+      return words
     },
-    poolSize() {
-      if (!this.selectedLevel) return 0
-      const myPts = new Set(PTStore.getMyVocabForDirection(this.mode).map(v => v.pt.toLowerCase()))
-      return this.dictEntries.filter(e => (e.lv||'—')===this.selectedLevel && !myPts.has(e.pt.toLowerCase())).length
+    /** Words filtered by selected CEFR level */
+    filteredWords() {
+      const words = this.allVocabData
+      if (!this.selectedLevel) return words
+      const level = this.selectedLevel.toLowerCase()
+      const matched = words.filter(w => {
+        if (!w.cefr) return false
+        return String(w.cefr).toLowerCase() === level
+      })
+      return matched.length > 0 ? matched : words
     },
-    currentWord() { return this.currentIdx < this.roundWords.length ? this.roundWords[this.currentIdx] : null },
+    hasWords() {
+      return this.filteredWords.length > 0
+    },
+    currentWord() {
+      return this.roundWords[this.currentIndex] || null
+    },
+    resultsEmoji() {
+      const p = this.results.percent
+      if (p >= 90) return '🏆'
+      if (p >= 70) return '🎉'
+      if (p >= 50) return '👍'
+      if (p >= 30) return '💪'
+      return '📚'
+    },
+    resultsColor() {
+      const p = this.results.percent
+      if (p >= 70) return 'text-[#2d6a4f]'
+      if (p >= 50) return 'text-[#d4a843]'
+      return 'text-[#c1121f]'
+    },
   },
   methods: {
-    loadDict() {
-      const KEY = 'UPLOADED_VOCAB_DATA'
-      try {
-        const raw = localStorage.getItem(KEY)
-        if (raw) this.dictEntries = JSON.parse(raw)
-        else this.dictEntries = []
-      } catch { this.dictEntries = [] }
+    toggleDirection() {
+      this.direction = this.direction === 'cn2pt' ? 'pt2cn' : 'cn2pt'
     },
+
+    /** Start a new practice round */
     startRound() {
-      if (!this.selectedLevel) return
-      PTStore.logActivity()
-      const pool = this.dictEntries.filter(e => (e.lv||'—')===this.selectedLevel)
-      if (!pool.length) return
-      const count = this.roundSize === -1 ? pool.length : Math.min(this.roundSize, pool.length)
-      const copy = [...pool.sort(() => Math.random()-0.5)]
-      this.roundWords = copy.slice(0, count)
-      this.currentIdx = 0
-      this.userInput = ''
-      this.feedback = null
-      this.results = []
-      this.flowActive = true
-      this.roundComplete = false
-      this.$nextTick(() => { if (this.$refs.inputRef) this.$refs.inputRef.focus() })
+      if (!this.hasWords) return
+      const shuffled = [...this.filteredWords].sort(() => Math.random() - 0.5)
+      this.roundWords = this.selectedCount === Infinity
+        ? shuffled
+        : shuffled.slice(0, Math.min(this.selectedCount, shuffled.length))
+      this.currentIndex = 0
+      this.correctInRound = 0
+      this.results = { correct: 0, wrong: 0, percent: 0, wrongWords: [] }
+      this.roundCompleted = false
+      this.feedbackState = null
+      this.userAnswer = ''
+      this.practiceActive = true
+      this.$nextTick(() => this.focusInput())
     },
+
+    focusInput() {
+      const el = this.$refs.answerInput
+      if (el && typeof el.focus === 'function') {
+        setTimeout(() => el.focus(), 100)
+      }
+    },
+
+    /** Check the user's answer */
     checkAnswer() {
-      if (!this.currentWord || !this.userInput.trim()) return
-      const w = this.currentWord
-      const answer = this.userInput.trim()
-      const expected = this.mode === 'pt2zh' ? w.zh : w.pt
-      const correct = answer.toLowerCase() === expected.toLowerCase()
-      this.feedback = { correct }
-      this.results.push({ pt: w.pt, zh: w.zh, correct })
-      if (correct) {
-        PTStore.addToMyVocab(w.pt, w.zh, w.pos || '', this.mode)
+      if (!this.currentWord || this.feedbackState) return
+      const userAns = this.userAnswer.trim()
+      if (!userAns) return
+
+      const correctAnswer = this.direction === 'cn2pt'
+        ? this.currentWord.pt
+        : this.currentWord.zh
+
+      let matchResult
+      if (typeof Diacritics !== 'undefined' && typeof Diacritics.compare === 'function') {
+        matchResult = Diacritics.compare(userAns, correctAnswer)
       } else {
-        PTStore.logWrongWord(w.pt, w.zh, w.pos || '', this.mode)
-      }
-    },
-    nextWord() {
-      if (this.currentIdx < this.roundWords.length - 1) {
-        this.currentIdx++
-        this.userInput = ''
-        this.feedback = null
-        this.$nextTick(() => { if (this.$refs.inputRef) this.$refs.inputRef.focus() })
-      } else {
-        this.flowActive = false
-        this.roundComplete = true
-      }
-    },
-    resetRound() {
-      this.flowActive = false
-      this.roundComplete = false
-      this.roundWords = []
-      this.currentIdx = 0
-      this.userInput = ''
-      this.feedback = null
-      this.results = []
-    },
-    onDrop(e) { this.dragOver=false; const f=e.dataTransfer?.files?.[0]; if(f) this._readCSV(f) },
-    onFileChange(e) { const f=e.target?.files?.[0]; if(f) this._readCSV(f) },
-    _readCSV(file) {
-      if (!file.name.endsWith('.csv')) return
-      this.fileName = file.name
-      const r = new FileReader()
-      r.onload = (e) => {
-        const lines = e.target.result.split(/\r?\n/).filter(l => l.trim())
-        this.parsedData = []
-        for (let i = 1; i < lines.length; i++) {
-          const parts = lines[i].split(';')
-          if (parts.length >= 2 && parts[0].trim() && parts[1].trim())
-            this.parsedData.push({ pt: parts[0].trim(), zh: parts[1].trim(), pos: parts[2]?.trim()||'' })
+        matchResult = {
+          match: userAns.toLowerCase().trim() === correctAnswer.toLowerCase().trim() ? 'strict' : 'none',
+          hint: '',
         }
-        this.parsedCount = this.parsedData.length
       }
-      r.readAsText(file, 'UTF-8')
+
+      const directionKey = this.direction === 'cn2pt' ? 'zh2pt' : 'pt2zh'
+
+      if (matchResult.match === 'strict' || matchResult.match === 'loose') {
+        this.feedbackState = 'correct'
+        this.feedbackHint = matchResult.hint || ''
+        this.correctInRound++
+        this.results.correct++
+        PTStore.addToMyVocab(this.currentWord.pt, this.currentWord.zh, this.currentWord.pos || '', directionKey)
+        PTStore.logWordPractice(this.currentWord.pt, directionKey)
+        if (matchResult.match === 'loose') {
+          PTStore.logWrongWord(this.currentWord.pt, this.currentWord.zh, this.currentWord.pos || '', directionKey)
+        } else {
+          PTStore.correctReview(this.currentWord.pt, directionKey)
+        }
+      } else {
+        this.feedbackState = 'wrong'
+        this.feedbackHint = ''
+        this.results.wrong++
+        this.results.wrongWords.push({ ...this.currentWord })
+        PTStore.logWrongWord(this.currentWord.pt, this.currentWord.zh, this.currentWord.pos || '', directionKey)
+        PTStore.logWordPractice(this.currentWord.pt, directionKey)
+      }
+    },
+
+    /** Move to next word or complete round */
+    nextWord() {
+      if (this.currentIndex < this.roundWords.length - 1) {
+        this.currentIndex++
+        this.feedbackState = null
+        this.userAnswer = ''
+        this.feedbackHint = ''
+        this.$nextTick(() => this.focusInput())
+      } else {
+        this.results.percent = this.roundWords.length > 0
+          ? Math.round((this.results.correct / this.roundWords.length) * 100)
+          : 0
+        this.roundCompleted = true
+      }
+    },
+
+    cancelPractice() {
+      this.practiceActive = false
+      this.roundCompleted = false
+      this.feedbackState = null
+      this.userAnswer = ''
+      this.roundWords = []
+    },
+
+    // ─── CSV Upload ───
+    handleDrop(e) {
+      this.dragOver = false
+      const file = e.dataTransfer.files[0]
+      if (file) this.parseCSVFile(file)
+    },
+    handleFileSelect(e) {
+      const file = e.target.files[0]
+      if (file) this.parseCSVFile(file)
+    },
+    parseCSVFile(file) {
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        const text = evt.target.result
+        const lines = text.split('\n').filter(l => l.trim())
+        const items = []
+        for (let line of lines) {
+          line = line.trim()
+          if (/^(chin[eê]s|zh|chinese|pt|portugu[eê]s)/i.test(line) && !line.includes(',')) continue
+          const parts = line.split(',')
+          if (parts.length >= 2) {
+            const zh = parts[0].trim().replace(/^["']|["']$/g, '')
+            const pt = parts[1].trim().replace(/^["']|["']$/g, '')
+            const pos = parts[2] ? parts[2].trim().replace(/^["']|["']$/g, '') : ''
+            if (zh && pt) {
+              items.push({ zh, pt, pos, cefr: this.selectedLevel, source: 'uploaded' })
+            }
+          }
+        }
+        this.parsedCSV = items
+      }
+      reader.readAsText(file)
     },
     confirmUpload() {
-      if (!this.parsedData.length) return
-      const lv = this.uploadLevel || this.uploadLabel || '—'
-      const entries = this.parsedData.map(d => ({ ...d, lv, label: this.uploadLabel || lv }))
-      const KEY = 'UPLOADED_VOCAB_DATA'
       let existing = []
-      try { const r=localStorage.getItem(KEY); if(r) existing=JSON.parse(r) } catch {}
-      existing.push(...entries)
-      localStorage.setItem(KEY, JSON.stringify(existing))
-      this.loadDict()
+      try {
+        const stored = localStorage.getItem('UPLOADED_VOCAB_DATA')
+        if (stored) existing = JSON.parse(stored)
+      } catch (_) {}
+      const existingKeys = new Set(existing.map(w => w.zh + '|' + w.pt))
+      for (const item of this.parsedCSV) {
+        const key = item.zh + '|' + item.pt
+        if (!existingKeys.has(key)) {
+          existing.push(item)
+          existingKeys.add(key)
+        }
+      }
+      localStorage.setItem('UPLOADED_VOCAB_DATA', JSON.stringify(existing))
+      this.parsedCSV = []
       this.showUpload = false
-      this.fileName = ''
-      this.parsedData = []
-      this.parsedCount = 0
     },
   },
   mounted() {
-    this.loadDict()
-    this.$nextTick(() => lucide.createIcons())
+    this.$nextTick(() => {
+      if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons()
+      }
+    })
   },
-  updated() { this.$nextTick(() => lucide.createIcons()) },
+  updated() {
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+      lucide.createIcons()
+    }
+  },
 }

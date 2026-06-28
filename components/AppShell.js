@@ -27,10 +27,6 @@
 const AppShell = {
   name: 'AppShell',
 
-  components: {
-    StudyStats,
-  },
-
   template: `
     <div class="AppShell relative min-h-screen bg-transparent flex flex-col">
 
