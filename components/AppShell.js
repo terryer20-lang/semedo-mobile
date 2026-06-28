@@ -70,7 +70,6 @@ var AppShell = {
       <ConfigModal :show="showConfig" @close="showConfig=false" />
     </div>
   `,
-  components: { StudyStats, VocabView, MeuLexicoView, ErrosView, ConfigModal },
   data() {
     return {
       currentView: 'praticar', showConfig: false, syncStatus: 'idle',
